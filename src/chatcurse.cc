@@ -28,6 +28,10 @@ void resize(int new_side_w, int new_composer_h);
 void debug_log(string const &);
 void process_mouse(MEVENT *);
 void process_B1_pressed(MEVENT *);
+void fill();
+void fill(PANEL *pan, char c, int offsetx = 0, int cutoffx = 0, int offsety = 0,
+          int cutoffy = 0);
+void draw_cur();
 
 int main() {
   initscr();
@@ -37,6 +41,7 @@ int main() {
 
   mmask_t old_mm, new_mm = ALL_MOUSE_EVENTS | REPORT_MOUSE_POSITION;
   mousemask(new_mm, &old_mm);
+  printf("\033[?1003h\n");  // magic for x-based terminal
   mouseinterval(0);
 
   refresh();
@@ -62,6 +67,7 @@ int main() {
     c = getch();
   }
 
+  printf("\033[?1003l\n");  // reset magic
   mousemask(old_mm, NULL);
   endwin();
 }
@@ -80,8 +86,12 @@ void init_layout() {
   side_pan = new_panel(side_win);
   main_pan = new_panel(main_win);
   composer_pan = new_panel(composer_win);
-  draw_border();
+  comcurx = 0, comcury = 1;
+  current_pan = ID_COMP;
 
+  draw_border();
+  fill();
+  draw_cur();
   update_panels();
   doupdate();
 }
@@ -119,6 +129,8 @@ void resize(int new_side_w, int new_composer_h) {
   delwin(old_composer_win);
 
   draw_border();
+  fill();
+  draw_cur();
   update_panels();
   doupdate();
 }
@@ -166,7 +178,6 @@ void process_B1_pressed(MEVENT *mevent) {
 
   if (edge) {
     debug_log(std::format("dragging edge {}", where));
-    printf("\033[?1003h\n");  // magic for x-based terminal
     int c;
     MEVENT mevent2;
     while (true) {
@@ -187,10 +198,30 @@ void process_B1_pressed(MEVENT *mevent) {
         resize(new_side_w, new_composer_h);
       }
     }
-    printf("\033[?1003l\n");  // reset magic
   } else {
     debug_log(std::format("choosing pane {}", where));
   }
 }
 
-void fill() {}
+void draw_cur() {
+  if (current_pan == ID_COMP) {
+    wmove(panel_window(composer_pan), comcury, comcurx);
+  } else {
+    curs_set(0);
+  }
+}
+
+void fill() {
+  fill(side_pan, 'a', 0, 1, 0, 0);
+  fill(main_pan, 'b', 0, 0, 0, 0);
+  fill(composer_pan, 'c', 0, 0, 1, 0);
+}
+
+void fill(PANEL *pan, char c, int offsetx, int cutoffx, int offsety,
+          int cutoffy) {
+  int maxx, maxy;
+  getmaxyx(panel_window(pan), maxy, maxx);
+  for (int y = offsety; y < maxy - cutoffy; ++y)
+    mvwaddstr(panel_window(pan), y, offsetx,
+              string(maxx - offsetx - cutoffx, c).c_str());
+}

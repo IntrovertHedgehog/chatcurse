@@ -17,5 +17,6 @@
 extern PANEL * composer_pan, *side_pan, *main_pan, *float_pan;
 extern int side_w, composer_h;
 extern std::ofstream log_os;
+extern int current_pan, comcurx, comcury;
 
 #endif  // INCLUDE_SRC_GLOBAL_H_
