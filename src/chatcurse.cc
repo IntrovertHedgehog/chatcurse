@@ -61,6 +61,11 @@ int main() {
         if (getmouse(&mevent) == OK) {
           process_mouse(&mevent);
         }
+        break;
+      }
+      case KEY_RESIZE: {
+        resize(side_w, composer_h);
+        break;
       }
     }
     doupdate();
@@ -75,7 +80,7 @@ int main() {
 void init_config() {
   log_os.open("tmp/debug.log", std::ios_base::out);
   side_w = min(32, COLS / 4);
-  composer_h = min(6, LINES / 6);
+  composer_h = min(6, LINES / 5);
 }
 
 void init_layout() {
