@@ -11,7 +11,7 @@
 #define ID_C_SIDE_MAIN_COMP 3
 
 #include <fstream>
-#include <ncurses.h>
+#include <curses.h>
 #include <panel.h>
 
 extern PANEL * composer_pan, *side_pan, *main_pan, *float_pan;

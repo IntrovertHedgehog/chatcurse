@@ -1,5 +1,6 @@
-tmp/
-build/
+**/tmp/
+**/build/
 .cache/
 vcpkg_installed/
 CmakeUserPresets.json
+.env

@@ -7,13 +7,10 @@ target_compile_options(compiler_flags INTERFACE -Wall -Wextra -Wpedantic)
 
 find_package(Curses REQUIRED)
 # SET(CURSES_USE_NCURSES TRUE)
+add_subdirectory(lib/td)
 
 file(GLOB_RECURSE SOURCE_FILES src/*.h src/*.cc)
 add_executable(chatcurse ${SOURCE_FILES})
-target_include_directories(chatcurse PUBLIC ${CURSES_INCLUDE_DIRS})
+target_include_directories(chatcurse PUBLIC ${CURSES_INCLUDE_DIRS} lib/td)
 target_compile_options(chatcurse PUBLIC ${CURSES_CFLAGS})
-target_link_libraries(chatcurse PUBLIC compiler_flags ${CURSES_LIBRARIES} panel)
-
-message(CURSES_INCLUDE_DIRS=${CURSES_INCLUDE_DIRS})
-message(CURSES_CFLAGS=${CURSES_CFLAGS})
-message(CURSES_LIBRARIES=${CURSES_LIBRARIES})
+target_link_libraries(chatcurse PUBLIC ${CURSES_LIBRARIES} panel Td::TdStatic compiler_flags)
