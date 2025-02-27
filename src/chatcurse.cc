@@ -4,7 +4,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <complex>
 #include <cstdio>
+#include <cstring>
 #include <ctime>
 #include <ios>
 #include <iostream>
@@ -19,11 +21,24 @@
 using std::min;
 using std::string;
 
-int main() {
+int main(int argv, char** argc) {
+  log_os.open("tmp/debug.log", std::ios_base::out);
+  std::cout << "Starting chatcurse..." << std::endl;
+
+  for (int i = 1; i < argv; ++i) {
+    if (strcmp(argc[i], "--use-test-dc")) {
+      use_test_dc = true;
+    } else if (strcmp(argc[i], "--logout-on-init")) {
+      logout_on_init = true;
+    } else {
+      std::cerr << "invalid options '" << argc[i] << "'\n";
+      exit(1);
+    }
+  }
+
   TgClient tgcl;
 
-  int ch;
-  std::cin >> ch;
+  tgcl.init_auth();
 
   initscr();
   raw();
@@ -69,7 +84,6 @@ int main() {
 }
 
 void init_config() {
-  log_os.open("tmp/debug.log", std::ios_base::out);
   side_w = min(32, COLS / 4);
   composer_h = min(6, LINES / 5);
 }

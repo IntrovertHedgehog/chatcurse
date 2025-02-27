@@ -19,4 +19,6 @@ extern int side_w, composer_h;
 extern std::ofstream log_os;
 extern int current_pan, comcurx, comcury;
 
+extern bool use_test_dc, logout_on_init;
+
 #endif  // INCLUDE_SRC_GLOBAL_H_
