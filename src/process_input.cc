@@ -86,21 +86,28 @@ void process_B1_pressed(MEVENT *mevent) {
 
 void process_input() {
   MEVENT mevent;
-  int c;
-  do {
-    c = getch();
-    switch (c) {
-      case KEY_MOUSE: {
-        if (getmouse(&mevent) == OK) {
-          process_mouse(&mevent);
-        }
-        break;
+  int c = getch();
+  switch (c) {
+    case KEY_MOUSE: {
+      if (getmouse(&mevent) == OK) {
+        process_mouse(&mevent);
       }
-      case KEY_RESIZE: {
-        event_queue.push(std::make_shared<event_resize>(side_w, composer_h));
-        break;
-      }
+      break;
     }
-  } while (c != CTRL('q'));
-  event_queue.push(std::make_shared<event_quit>());
+    case KEY_RESIZE: {
+      debug_log("key resize received");
+      event_queue.push(std::make_shared<event_resize>(side_w, composer_h));
+      break;
+    }
+    case CTRL('q'): {
+      event_queue.push(std::make_shared<event_quit>());
+    }
+    case ERR: {
+      break;
+    }
+    default: {
+      debug_log(std::format("unrecognized key event {}", c));
+      break;
+    }
+  }
 }

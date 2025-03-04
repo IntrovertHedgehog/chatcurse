@@ -65,7 +65,6 @@ void resize(int new_side_w, int new_composer_h) {
   fill(ID_COMP);
   update_panels();
   doupdate();
-  // event_queue.push(ID_ALL);
 }
 
 void draw_cur() {

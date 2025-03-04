@@ -1,8 +1,12 @@
 #include <curses.h>
+#include <linux/prctl.h>
 #include <panel.h>
+#include <sys/prctl.h>
+#include <sys/select.h>
 #include <time.h>
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -30,7 +34,9 @@ int main(int argv, char** argc) {
 
   for (int i = 1; i < argv; ++i) {
     debug_log("option " + string(argc[i]));
-    if (strcmp(argc[i], "--test") == 0) {
+    if (strcmp(argc[i], "--debug") == 0) {
+      prctl(PR_SET_PTRACER, PR_SET_PTRACER_ANY);
+    } else if (strcmp(argc[i], "--test") == 0) {
       use_test_dc = true;
     } else if (strcmp(argc[i], "--logout") == 0) {
       logout_next = true;
@@ -49,6 +55,7 @@ int main(int argv, char** argc) {
   raw();
   keypad(stdscr, TRUE);
   noecho();
+  timeout(0);
 
   mmask_t old_mm, new_mm = ALL_MOUSE_EVENTS | REPORT_MOUSE_POSITION;
   mousemask(new_mm, &old_mm);
@@ -65,15 +72,16 @@ int main(int argv, char** argc) {
 
   // in app
 
-  // spawn thread to process user input
-  std::thread input_thread = std::thread(process_input);
+  // spawn thread to process user input -> become single thread
+  // std::thread input_thread = std::thread(process_input);
   // spawn thread to process tg input
 
   bool cont = true;
   while (cont) {
     // update UI every loop
-    shared_ptr<event_base> to_update = event_queue.wait_pop();
-    debug_log(std::format("new event type = {}", to_update->type));
+    process_input();
+    shared_ptr<event_base> to_update = event_queue.pop_and_get();
+    if (!to_update) continue;
     switch (to_update->type) {
       case ET_QUIT: {
         cont = false;
@@ -88,7 +96,7 @@ int main(int argv, char** argc) {
     }
   }
 
-  input_thread.join();
+  // input_thread.join();
 
   printf("\033[?1003l\n");  // reset magic
   mousemask(old_mm, NULL);

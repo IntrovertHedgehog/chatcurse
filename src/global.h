@@ -40,17 +40,20 @@ class event_queue_struct {
 
   shared_ptr<event_base> pop_and_get() {
     q_mutex.lock();
-    shared_ptr<event_base> res = event_queue.front();
-    event_queue.pop();
+    shared_ptr<event_base> res;
+    if (!event_queue.empty()) {
+      res = std::move(event_queue.front());
+      event_queue.pop();
+    }
     q_mutex.unlock();
     return res;
   }
 
-  shared_ptr<event_base> wait_pop() {
-    while (event_queue.empty()) {
-    }
-    return pop_and_get();
-  }
+  // shared_ptr<event_base> wait_pop() {
+  //   while (event_queue.empty()) {
+  //   }
+  //   return pop_and_get();
+  // }
 
   void pop() {
     q_mutex.lock();
