@@ -1,5 +1,9 @@
 #include "layout.h"
 
+#include <curses.h>
+#include <panel.h>
+
+#include <format>
 #include <string>
 
 #include "global.h"
@@ -18,11 +22,11 @@ void init_layout() {
 
   draw_border();
   fill();
-  draw_cur();
   update_panels();
   doupdate();
 }
 
+// always draw borders before anything else
 void draw_border() {
   wborder(panel_window(side_pan), ' ', 0, ' ', ' ', ' ', ACS_VLINE, ' ',
           ACS_VLINE);
@@ -56,10 +60,12 @@ void resize(int new_side_w, int new_composer_h) {
   delwin(old_composer_win);
 
   draw_border();
-  fill();
-  draw_cur();
+  fill(ID_SIDE);
+  fill(ID_MAIN);
+  fill(ID_COMP);
   update_panels();
   doupdate();
+  // event_queue.push(ID_ALL);
 }
 
 void draw_cur() {
@@ -71,16 +77,32 @@ void draw_cur() {
 }
 
 void fill() {
-  fill(side_pan, 'a', 0, 1, 0, 0);
-  fill(main_pan, 'b', 0, 0, 0, 0);
-  fill(composer_pan, 'c', 0, 0, 1, 0);
+  fill(ID_MAIN);
+  fill(ID_SIDE);
+  fill(ID_COMP);
+}
+
+void fill(int p) {
+  if (p == ID_MAIN) {
+    fill(main_pan, 'b', 0, 0, 0, 0);
+  } else if (p == ID_SIDE) {
+    fill(side_pan, 'a', 0, 1, 0, 0);
+  } else if (p == ID_COMP) {
+    fill(composer_pan, 'c', 0, 0, 1, 0);
+  }
 }
 
 void fill(PANEL *pan, char c, int offsetx, int cutoffx, int offsety,
           int cutoffy) {
   int maxx, maxy;
   getmaxyx(panel_window(pan), maxy, maxx);
-  for (int y = offsety; y < maxy - cutoffy; ++y)
+  // debug_log(std::format("fill {}, {}, {}, {}, {}, {}, {}", c, offsetx,
+  // cutoffx,
+  //                       offsety, cutoffy, maxy, maxx));
+  for (int y = offsety; y < maxy - cutoffy; ++y) {
+    // debug_log(std::format("pos {}, {} size {}", y, offsetx,
+    //                       maxx - offsetx - cutoffx));
     mvwaddstr(panel_window(pan), y, offsetx,
               std::string(maxx - offsetx - cutoffx, c).c_str());
+  }
 }

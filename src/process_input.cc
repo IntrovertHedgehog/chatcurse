@@ -3,10 +3,27 @@
 #include <curses.h>
 
 #include <format>
+#include <memory>
 
-#include "utils.h"
-#include "layout.h"
+#include "event_types.h"
 #include "global.h"
+#include "layout.h"
+#include "utils.h"
+
+struct input_state_str {
+  int state = S_NONE;  // mouse_dragging, key prefix, none
+  std::vector<int> kbuf;
+  struct {
+    bool edge;
+    int where;
+  } mbuf;
+  void reset() {
+    state = S_NONE;
+    kbuf.clear();
+  }
+};
+
+input_state_str input_state;
 
 void process_mouse(MEVENT *mevent) {
   debug_log(std::format("mouse event received ({}, {}, {}, {})", mevent->bstate,
@@ -14,12 +31,26 @@ void process_mouse(MEVENT *mevent) {
 
   if ((mevent->bstate & BUTTON1_PRESSED)) {
     process_B1_pressed(mevent);
+  } else if (mevent->bstate & BUTTON1_RELEASED) {
+    input_state.reset();
+  } else if (mevent->bstate & REPORT_MOUSE_POSITION) {
+    if (input_state.state == S_MOUSE_DRAG) {
+      int new_side_w{side_w}, new_composer_h{composer_h};
+      if (input_state.mbuf.where & ID_E_SIDE_MAIN) {
+        new_side_w = mevent->x + 1;
+      }
+      if (input_state.mbuf.where & ID_E_COMP_TOP) {
+        new_composer_h = LINES - mevent->y;
+      }
+      event_queue.push(
+          std::make_shared<event_resize>(new_side_w, new_composer_h));
+    }
   }
 }
 
 void process_B1_pressed(MEVENT *mevent) {
-  bool edge;
-  int where{};
+  bool &edge = input_state.mbuf.edge;
+  int &where = input_state.mbuf.where;
 
   if (mevent->y < LINES - composer_h) {
     if (mevent->x < side_w - 1) {
@@ -45,28 +76,31 @@ void process_B1_pressed(MEVENT *mevent) {
   }
 
   if (edge) {
+    input_state.state = S_MOUSE_DRAG;
     debug_log(std::format("dragging edge {}", where));
-    int c;
-    MEVENT mevent2;
-    while (true) {
-      c = getch();
-      if (c != KEY_MOUSE) continue;
-      if (getmouse(&mevent2) != OK) continue;
-      debug_log(std::format("mevent2 {} {} {}", mevent2.bstate, mevent2.y,
-                            mevent2.x));
-      if (mevent2.bstate & BUTTON1_RELEASED) break;
-      if (mevent2.bstate & REPORT_MOUSE_POSITION) {
-        int new_side_w{side_w}, new_composer_h{composer_h};
-        if (where & ID_E_SIDE_MAIN) {
-          new_side_w = mevent2.x + 1;
-        }
-        if (where & ID_E_COMP_TOP) {
-          new_composer_h = LINES - mevent2.y;
-        }
-        resize(new_side_w, new_composer_h);
-      }
-    }
   } else {
+    input_state.reset();
     debug_log(std::format("choosing pane {}", where));
   }
+}
+
+void process_input() {
+  MEVENT mevent;
+  int c;
+  do {
+    c = getch();
+    switch (c) {
+      case KEY_MOUSE: {
+        if (getmouse(&mevent) == OK) {
+          process_mouse(&mevent);
+        }
+        break;
+      }
+      case KEY_RESIZE: {
+        event_queue.push(std::make_shared<event_resize>(side_w, composer_h));
+        break;
+      }
+    }
+  } while (c != CTRL('q'));
+  event_queue.push(std::make_shared<event_quit>());
 }

@@ -4,14 +4,17 @@
 
 #include <algorithm>
 #include <cmath>
-#include <complex>
 #include <cstdio>
 #include <cstring>
 #include <ctime>
+#include <format>
 #include <ios>
 #include <iostream>
+#include <memory>
 #include <string>
+#include <thread>
 
+#include "event_types.h"
 #include "global.h"
 #include "layout.h"
 #include "process_input.h"
@@ -26,20 +29,22 @@ int main(int argv, char** argc) {
   std::cout << "Starting chatcurse..." << std::endl;
 
   for (int i = 1; i < argv; ++i) {
-    if (strcmp(argc[i], "--use-test-dc")) {
+    debug_log("option " + string(argc[i]));
+    if (strcmp(argc[i], "--test") == 0) {
       use_test_dc = true;
-    } else if (strcmp(argc[i], "--logout-on-init")) {
-      logout_on_init = true;
+    } else if (strcmp(argc[i], "--logout") == 0) {
+      logout_next = true;
     } else {
       std::cerr << "invalid options '" << argc[i] << "'\n";
       exit(1);
     }
   }
 
+  // authorization
   TgClient tgcl;
-
   tgcl.init_auth();
 
+  // setting up ui
   initscr();
   raw();
   keypad(stdscr, TRUE);
@@ -50,37 +55,46 @@ int main(int argv, char** argc) {
   printf("\033[?1003h\n");  // magic for x-based terminal
   mouseinterval(0);
 
+  // required, otherwise panel library display incorrectly
   refresh();
 
   init_config();
   init_layout();
 
   debug_log("initialization finished");
+
   // in app
 
-  int c = getch();
-  MEVENT mevent;
+  // spawn thread to process user input
+  std::thread input_thread = std::thread(process_input);
+  // spawn thread to process tg input
 
-  while (c != CTRL('q')) {
-    switch (c) {
-      case KEY_MOUSE: {
-        if (getmouse(&mevent) == OK) {
-          process_mouse(&mevent);
-        }
+  bool cont = true;
+  while (cont) {
+    // update UI every loop
+    shared_ptr<event_base> to_update = event_queue.wait_pop();
+    debug_log(std::format("new event type = {}", to_update->type));
+    switch (to_update->type) {
+      case ET_QUIT: {
+        cont = false;
         break;
       }
-      case KEY_RESIZE: {
-        resize(side_w, composer_h);
+      case ET_RESIZE: {
+        shared_ptr<event_resize> ev =
+            std::dynamic_pointer_cast<event_resize>(to_update);
+        resize(ev->side_w, ev->comp_h);
         break;
       }
     }
-    doupdate();
-    c = getch();
   }
+
+  input_thread.join();
 
   printf("\033[?1003l\n");  // reset magic
   mousemask(old_mm, NULL);
   endwin();
+
+  return 0;
 }
 
 void init_config() {
