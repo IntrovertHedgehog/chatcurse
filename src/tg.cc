@@ -30,7 +30,7 @@ void TgClient::send_query(
     td_api::object_ptr<td_api::Function> f,
     std::function<void(td::td_api::object_ptr<td::td_api::Object>)> handler) {
   auto query_id = next_query_id();
-  debug_log("send " + std::to_string(query_id) + ":" +
+  logger->info("send " + std::to_string(query_id) + ":" +
             td::td_api::to_string(f));
   if (handler) {
     handlers_.emplace(query_id, std::move(handler));
@@ -42,7 +42,7 @@ void TgClient::process_response(td::ClientManager::Response response) {
   if (!response.object) {
     return;
   }
-  debug_log("reiv " + std::to_string(response.request_id) + ":" +
+  logger->info("reiv " + std::to_string(response.request_id) + ":" +
             td::td_api::to_string(response.object));
   if (response.request_id == 0) {
     return process_update(std::move(response.object));

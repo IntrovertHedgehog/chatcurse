@@ -1,6 +1,8 @@
 #include <curses.h>
 #include <linux/prctl.h>
 #include <panel.h>
+#include <spdlog/common.h>
+#include <spdlog/sinks/basic_file_sink.h>
 #include <sys/prctl.h>
 #include <sys/select.h>
 #include <time.h>
@@ -29,14 +31,20 @@ using std::min;
 using std::string;
 
 int main(int argv, char** argc) {
-  log_os.open("tmp/debug.log", std::ios_base::out);
   std::cout << "Starting chatcurse..." << std::endl;
 
+  try {
+    logger = spdlog::basic_logger_mt("chatcurse", "tmp/debug.log");
+    logger->flush_on(spdlog::level::info);
+  } catch (spdlog::spdlog_ex& e) {
+    std::cerr << "spdlog error: " << e.what() << std::endl;
+  }
+
   for (int i = 1; i < argv; ++i) {
-    debug_log("option " + string(argc[i]));
-    if (strcmp(argc[i], "--debug") == 0) {
+    logger->info("option " + string(argc[i]));
+    if (strcmp(argc[i], "--debug-attach") == 0) {
       prctl(PR_SET_PTRACER, PR_SET_PTRACER_ANY);
-    } else if (strcmp(argc[i], "--test") == 0) {
+    } else if (strcmp(argc[i], "--use-test-dc") == 0) {
       use_test_dc = true;
     } else if (strcmp(argc[i], "--logout") == 0) {
       logout_next = true;
@@ -68,7 +76,7 @@ int main(int argv, char** argc) {
   init_config();
   init_layout();
 
-  debug_log("initialization finished");
+  logger->info("initialization finished");
 
   // in app
 

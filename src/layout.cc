@@ -36,7 +36,7 @@ void draw_border() {
 }
 
 void resize(int new_side_w, int new_composer_h) {
-  debug_log(std::format("new size ({}, {})", new_side_w, new_composer_h));
+  logger->info(std::format("new size ({}, {})", new_side_w, new_composer_h));
 
   if (new_side_w >= COLS) return;
   if (new_composer_h >= LINES) return;
@@ -95,11 +95,11 @@ void fill(PANEL *pan, char c, int offsetx, int cutoffx, int offsety,
           int cutoffy) {
   int maxx, maxy;
   getmaxyx(panel_window(pan), maxy, maxx);
-  // debug_log(std::format("fill {}, {}, {}, {}, {}, {}, {}", c, offsetx,
+  // logger->info(std::format("fill {}, {}, {}, {}, {}, {}, {}", c, offsetx,
   // cutoffx,
   //                       offsety, cutoffy, maxy, maxx));
   for (int y = offsety; y < maxy - cutoffy; ++y) {
-    // debug_log(std::format("pos {}, {} size {}", y, offsetx,
+    // logger->info(std::format("pos {}, {} size {}", y, offsetx,
     //                       maxx - offsetx - cutoffx));
     mvwaddstr(panel_window(pan), y, offsetx,
               std::string(maxx - offsetx - cutoffx, c).c_str());

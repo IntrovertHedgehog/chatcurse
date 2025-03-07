@@ -26,7 +26,7 @@ struct input_state_str {
 input_state_str input_state;
 
 void process_mouse(MEVENT *mevent) {
-  debug_log(std::format("mouse event received ({}, {}, {}, {})", mevent->bstate,
+  logger->info(std::format("mouse event received ({}, {}, {}, {})", mevent->bstate,
                         mevent->y, mevent->x, mevent->z));
 
   if ((mevent->bstate & BUTTON1_PRESSED)) {
@@ -77,10 +77,10 @@ void process_B1_pressed(MEVENT *mevent) {
 
   if (edge) {
     input_state.state = S_MOUSE_DRAG;
-    debug_log(std::format("dragging edge {}", where));
+    logger->info(std::format("dragging edge {}", where));
   } else {
     input_state.reset();
-    debug_log(std::format("choosing pane {}", where));
+    logger->info(std::format("choosing pane {}", where));
   }
 }
 
@@ -95,7 +95,7 @@ void process_input() {
       break;
     }
     case KEY_RESIZE: {
-      debug_log("key resize received");
+      logger->info("key resize received");
       event_queue.push(std::make_shared<event_resize>(side_w, composer_h));
       break;
     }
@@ -106,7 +106,7 @@ void process_input() {
       break;
     }
     default: {
-      debug_log(std::format("unrecognized key event {}", c));
+      logger->info(std::format("unrecognized key event {}", c));
       break;
     }
   }

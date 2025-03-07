@@ -3,17 +3,17 @@
 
 #include <curses.h>
 #include <panel.h>
+#include <spdlog/sinks/basic_file_sink.h>
 #include <sys/eventfd.h>
 
-#include <fstream>
 #include <memory>
 #include <mutex>
 #include <queue>
 
 #include "event_types.h"
 
-// debugging
-extern std::ofstream log_os;
+// logging
+extern std::shared_ptr<spdlog::logger> logger;
 
 // UI
 extern PANEL *composer_pan, *side_pan, *main_pan, *float_pan;
