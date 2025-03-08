@@ -17,6 +17,7 @@
 #include <utility>
 
 #include "event_types.h"
+#include "td/telegram/td_api.h"
 
 // logging
 extern std::shared_ptr<spdlog::logger> logger;
@@ -69,17 +70,36 @@ class event_queue_struct {
 };
 
 extern event_queue_struct event_queue;
+using td::td_api::object_ptr;
 
-class app_state {
-  static int constexpr _id_current_pane = 1, _id_chatboxes = 2, _id_terminating = 3;
+class tl_app_state_struct {
+  static int constexpr _id_current_pane = 1, _id_chatboxes = 2,
+                       _id_terminating = 3;
 
   int _current_pane;
-  std::set<std::string> _chatboxes;
   bool _terminating;
+
   std::unordered_map<int, shared_ptr<std::mutex>> mutexes;
 
  public:
-  app_state()
+  std::unordered_map<td::td_api::int53, object_ptr<td::td_api::user>>
+      id_to_user;
+  std::unordered_map<td::td_api::int53, object_ptr<td::td_api::userFullInfo>>
+      id_to_user_full_info;
+  std::unordered_map<td::td_api::int53, object_ptr<td::td_api::chat>>
+      id_to_chat;
+  std::unordered_map<td::td_api::int53, object_ptr<td::td_api::basicGroup>>
+      id_to_basicgroup;
+  std::unordered_map<td::td_api::int53,
+                     object_ptr<td::td_api::basicGroupFullInfo>>
+      id_to_basicgroup_full_info;
+  std::unordered_map<td::td_api::int53, object_ptr<td::td_api::supergroup>>
+      id_to_supergroup;
+  std::unordered_map<td::td_api::int53,
+                     object_ptr<td::td_api::supergroupFullInfo>>
+      id_to_supergroup_full_info;
+
+  tl_app_state_struct()
       : mutexes{{_id_current_pane, std::make_shared<std::mutex>()},
                 {_id_chatboxes, std::make_shared<std::mutex>()},
                 {_id_terminating, std::make_shared<std::mutex>()}} {}
@@ -89,7 +109,9 @@ class app_state {
   void set_terminating(bool);
 };
 
-extern std::unordered_map<std::string, shared_ptr<app_state>>
-    application_states;
+// extern tl_app_state_struct tl_app_state;
+
+// extern std::unordered_map<std::string, shared_ptr<app_state>>
+//     application_states;
 
 #endif  // INCLUDE_SRC_GLOBAL_H_

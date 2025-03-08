@@ -13,24 +13,26 @@ int current_pan, comcurx, comcury;
 bool use_test_dc = false, logout_next = false, debug_attach = false;
 event_queue_struct event_queue;
 
-int app_state::current_pane() {
+int tl_app_state_struct::current_pane() {
   std::lock_guard<std::mutex> g(*mutexes[_id_current_pane]);
   return _current_pane;
 }
 
-void app_state::set_current_pane(int e) {
+void tl_app_state_struct::set_current_pane(int e) {
   std::lock_guard<std::mutex> g(*mutexes[_id_current_pane]);
   _current_pane = e;
 }
 
-bool app_state::terminating() {
+bool tl_app_state_struct::terminating() {
   std::lock_guard<std::mutex> g(*mutexes[_id_terminating]);
   return _terminating;
 }
 
-void app_state::set_terminating(bool e) {
+void tl_app_state_struct::set_terminating(bool e) {
   std::lock_guard<std::mutex> g(*mutexes[_id_terminating]);
   _terminating = e;
 }
 
-std::unordered_map<std::string, shared_ptr<app_state>> application_states;
+// tl_app_state_struct tl_app_state;
+
+// std::unordered_map<std::string, shared_ptr<app_state>> application_states;

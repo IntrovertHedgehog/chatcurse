@@ -60,14 +60,12 @@ int main(int argv, char** argc) {
   }
 
   if (debug_attach) {
-    int c;
+    char c;
     std::cout << "waiting for attachment, press enter to proceed..."
               << std::endl;
     while ((c = std::cin.get()) != 10) {
     }
   }
-
-  application_states["tg"] = std::make_shared<app_state>();
 
   // authorization
   TgClient tgcl;
@@ -118,7 +116,7 @@ int main(int argv, char** argc) {
     switch (to_update->type) {
       case ET_QUIT: {
         cont = false;
-        application_states["tg"]->set_terminating(true);
+        tgcl.app_state->set_terminating(true);
         break;
       }
       case ET_RESIZE: {

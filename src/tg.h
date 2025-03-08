@@ -60,6 +60,7 @@ class TgClient {
       handlers_;
 
  public:
+  shared_ptr<tl_app_state_struct> app_state;
   friend void call_init_event_handler(TgClient &cl);
   TgClient();
   // initialize authentication and setup db
@@ -67,6 +68,7 @@ class TgClient {
   void init_auth();
   // set up handler and listener
   void set_response_handlers();
+  td::td_api::int32 next_query_id() { return ++current_query_id_; }
   void send_query(
       td_api::object_ptr<td_api::Function> f,
       std::function<void(td::td_api::object_ptr<td::td_api::Object>)> handler);
@@ -83,7 +85,17 @@ class TgClient {
     };
   }
   void process_auth();
-  td::td_api::int32 next_query_id() { return ++current_query_id_; }
+  void process_update_user(td::td_api::updateUser &);
+  void process_update_user_full_info(td::td_api::updateUserFullInfo &);
+  void process_update_new_chat(td::td_api::updateNewChat &);
+  void process_update_basicgroup(td::td_api::updateBasicGroup &);
+  void process_update_basicgroup_full_info(
+      td::td_api::updateBasicGroupFullInfo &);
+  void process_update_supergroup(td::td_api::updateSupergroup &);
+  void process_update_supergroup_full_info(
+      td::td_api::updateSupergroupFullInfo &);
+  void process_update_chat_position(td::td_api::updateChatPosition &);
+  void process_update_chat_last_message(td::td_api::updateChatLastMessage &);
 };
 
 #endif  // INCLUDE_SRC_TG_H_

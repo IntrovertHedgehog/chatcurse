@@ -68,23 +68,26 @@ updateSavedNotificationSounds
 updateScopeNotificationSettings
 updateServiceNotification
 updateSpeedLimitNotification
-
-updateUser
-updateUserFullInfo
 updateUserPrivacySettingRules
+updateChatMember
+updateChatMessageSender
 updateUserStatus
 
 ## priority
 
-updateNewChat
 
+updateUser
+updateUserFullInfo
+updateNewChat
 updateAuthorizationState
+
 updateBasicGroup
 updateBasicGroupFullInfo
-updateChatIsMarkedAsUnread
+updateSupergroup
+updateSupergroupFullInfo
 updateChatLastMessage
-updateChatMember
-updateChatMessageSender
+
+updateChatIsMarkedAsUnread
 updateChatTitle
 updateChatPosition
 updateNewChatJoinRequest
@@ -162,8 +165,6 @@ updateStorySendFailed
 updateStorySendSucceeded
 updateStoryStealthMode
 updateSuggestedActions
-updateSupergroup
-updateSupergroupFullInfo
 updateTermsOfService
 updateTrendingStickerSets
 updateUnconfirmedSession

@@ -4,6 +4,8 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <memory>
+#include <tuple>
 
 #include "global.h"
 #include "td/telegram/td_api.h"
@@ -17,6 +19,7 @@ TgClient::TgClient() {
   client_manager_ = std::make_unique<td::ClientManager>();
   client_id_ = client_manager_->create_client_id();
   send_query(td_api::make_object<td_api::getOption>("version"), {});
+  app_state = std::make_shared<tl_app_state_struct>();
 }
 
 void TgClient::init_auth() {
@@ -31,13 +34,14 @@ void TgClient::init_auth() {
       break;
     }
   }
-  send_query(make_object<td::td_api::loadChats>(make_object<td::td_api::chatListMain>(), 10), {});
+  send_query(make_object<td::td_api::loadChats>(
+                 make_object<td::td_api::chatListMain>(), 10),
+             {});
 }
 
 void TgClient::set_response_handlers() {
-  shared_ptr<app_state> state = application_states["tg"];
   while (true) {
-    if (state->terminating()) {
+    if (app_state->terminating()) {
       return;
     }
     process_response(client_manager_->receive(1));
@@ -48,8 +52,8 @@ void TgClient::send_query(
     td_api::object_ptr<td_api::Function> f,
     std::function<void(td::td_api::object_ptr<td::td_api::Object>)> handler) {
   auto query_id = next_query_id();
-  logger->info("send " + std::to_string(query_id) + ":" +
-               td::td_api::to_string(f));
+  logger->debug("send " + std::to_string(query_id) + ":" +
+                td::td_api::to_string(f));
   if (handler) {
     handlers_.emplace(query_id, std::move(handler));
   }
@@ -64,8 +68,8 @@ void TgClient::process_response(td::ClientManager::Response response) {
   if (response.object->get_id() == td::td_api::updateOption::ID) {
     return;
   }
-  logger->info("reiv " + std::to_string(response.request_id) + ":" +
-               td::td_api::to_string(response.object));
+  logger->debug("reiv " + std::to_string(response.request_id) + ":" +
+                td::td_api::to_string(response.object));
   if (response.request_id == 0) {
     return process_update(std::move(response.object));
   }
@@ -79,12 +83,15 @@ void TgClient::process_response(td::ClientManager::Response response) {
 void TgClient::process_update(
     td::td_api::object_ptr<td::td_api::Object> object) {
   td::td_api::downcast_call(
-      *object, overloaded(
-                   [this](td::td_api::updateAuthorizationState &u) {
-                     auth_state_ = std::move(u.authorization_state_);
-                     process_auth();
-                   },
-                   [](auto &) {}));
+      *object,
+      overloaded(
+          [this](td::td_api::updateAuthorizationState &u) {
+            auth_state_ = std::move(u.authorization_state_);
+            process_auth();
+          },
+          [](auto &o) {
+            logger->warn("unhandled update " + td::td_api::to_string(o));
+          }));
 }
 
 void TgClient::process_auth() {
@@ -195,3 +202,34 @@ void TgClient::process_auth() {
           },
           [](auto &) {}));
 }
+
+void TgClient::process_update_user(td::td_api::updateUser &u) {
+  app_state->id_to_user[u.user_->id_] = std::move(u.user_);
+};
+void TgClient::process_update_user_full_info(
+    td::td_api::updateUserFullInfo &u) {
+  app_state->id_to_user_full_info[u.user_id_] = std::move(u.user_full_info_);
+};
+void TgClient::process_update_new_chat(td::td_api::updateNewChat &u) {
+  app_state->id_to_chat[u.chat_->id_] = std::move(u.chat_);
+};
+void TgClient::process_update_basicgroup(td::td_api::updateBasicGroup &u) {
+  app_state->id_to_basicgroup[u.basic_group_->id_] = std::move(u.basic_group_);
+};
+void TgClient::process_update_basicgroup_full_info(
+    td::td_api::updateBasicGroupFullInfo &u) {
+  app_state->id_to_basicgroup_full_info[u.basic_group_id_] =
+      std::move(u.basic_group_full_info_);
+};
+void TgClient::process_update_supergroup(td::td_api::updateSupergroup &u) {
+  app_state->id_to_supergroup[u.supergroup_->id_] = std::move(u.supergroup_);
+};
+void TgClient::process_update_supergroup_full_info(
+    td::td_api::updateSupergroupFullInfo &u) {
+  app_state->id_to_supergroup_full_info[u.supergroup_id_] =
+      std::move(u.supergroup_full_info_);
+};
+void TgClient::process_update_chat_position(td::td_api::updateChatPosition &u) {
+};
+void TgClient::process_update_chat_last_message(
+    td::td_api::updateChatLastMessage &u) {};
