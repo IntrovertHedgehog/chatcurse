@@ -12,6 +12,7 @@
 #include <memory>
 #include <ostream>
 #include <string>
+#include <thread>
 #include <utility>
 
 #include "global.h"
@@ -59,12 +60,13 @@ class TgClient {
       handlers_;
 
  public:
+  friend void call_init_event_handler(TgClient &cl);
   TgClient();
   // initialize authentication and setup db
   // at then end of this function it's safe to show the ui
   void init_auth();
   // set up handler and listener
-  void init_event_handlers();
+  void set_response_handlers();
   void send_query(
       td_api::object_ptr<td_api::Function> f,
       std::function<void(td::td_api::object_ptr<td::td_api::Object>)> handler);

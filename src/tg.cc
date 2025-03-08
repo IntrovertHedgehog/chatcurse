@@ -1,8 +1,15 @@
 #include "tg.h"
 
+#include <memory.h>
+
+#include <cstdlib>
 #include <iostream>
 
 #include "global.h"
+#include "td/telegram/td_api.h"
+
+using td::td_api::make_object;
+using td::td_api::Object;
 
 TgClient::TgClient() {
   td::ClientManager::execute(
@@ -19,10 +26,21 @@ void TgClient::init_auth() {
       *this = TgClient();
       std::cout << "restarted successfully";
     } else if (!is_auth_) {
-      process_response(client_manager_->receive(10));
+      process_response(client_manager_->receive(3));
     } else {
       break;
     }
+  }
+  send_query(make_object<td::td_api::loadChats>(make_object<td::td_api::chatListMain>(), 10), {});
+}
+
+void TgClient::set_response_handlers() {
+  shared_ptr<app_state> state = application_states["tg"];
+  while (true) {
+    if (state->terminating()) {
+      return;
+    }
+    process_response(client_manager_->receive(1));
   }
 }
 
@@ -31,7 +49,7 @@ void TgClient::send_query(
     std::function<void(td::td_api::object_ptr<td::td_api::Object>)> handler) {
   auto query_id = next_query_id();
   logger->info("send " + std::to_string(query_id) + ":" +
-            td::td_api::to_string(f));
+               td::td_api::to_string(f));
   if (handler) {
     handlers_.emplace(query_id, std::move(handler));
   }
@@ -42,8 +60,12 @@ void TgClient::process_response(td::ClientManager::Response response) {
   if (!response.object) {
     return;
   }
+  // TODO(hedgehog): ignore option for now
+  if (response.object->get_id() == td::td_api::updateOption::ID) {
+    return;
+  }
   logger->info("reiv " + std::to_string(response.request_id) + ":" +
-            td::td_api::to_string(response.object));
+               td::td_api::to_string(response.object));
   if (response.request_id == 0) {
     return process_update(std::move(response.object));
   }
@@ -172,8 +194,4 @@ void TgClient::process_auth() {
             need_restart_ = true;
           },
           [](auto &) {}));
-}
-
-void TgClient::init_event_handlers() {
-
 }
