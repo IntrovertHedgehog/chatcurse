@@ -87,7 +87,11 @@ int main(int argv, char** argc) {
 
   // reset magic when terminate in any case
   auto term = [](int s) {
+    for (auto& p : application_states) {
+      p.second->set_terminating(true);
+    }
     printf("\033[?1003l\n");
+    endwin();
     SIG_DFL(s);
   };
 
@@ -101,8 +105,6 @@ int main(int argv, char** argc) {
   init_layout();
 
   logger->info("initialization finished");
-
-  // in app
 
   // spawn thread to process tg input
   std::thread tgcl_thread(&TgClient::set_response_handlers, std::ref(tgcl));
