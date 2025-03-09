@@ -23,6 +23,7 @@
 #include <ostream>
 #include <string>
 #include <thread>
+#include <unistd.h>
 
 #include "event_types.h"
 #include "global.h"
@@ -38,7 +39,7 @@ int main(int argv, char** argc) {
   std::cout << "Starting chatcurse..." << std::endl;
 
   try {
-    logger = spdlog::basic_logger_mt("chatcurse", "tmp/debug.log");
+    logger = spdlog::basic_logger_mt("chatcurse", "tmp/debug.log", true);
     logger->flush_on(spdlog::level::info);
   } catch (spdlog::spdlog_ex& e) {
     std::cerr << "spdlog error: " << e.what() << std::endl;
@@ -64,6 +65,7 @@ int main(int argv, char** argc) {
     std::cout << "waiting for attachment, press enter to proceed..."
               << std::endl;
     while ((c = std::cin.get()) != 10) {
+      std::cout << (int)c << std::endl;
     }
   }
 
@@ -85,10 +87,8 @@ int main(int argv, char** argc) {
 
   // reset magic when terminate in any case
   auto term = [](int s) {
-    for (auto& p : application_states) {
-      p.second->set_terminating(true);
-    }
     printf("\033[?1003l\n");
+    fflush(stdout);
     endwin();
     SIG_DFL(s);
   };

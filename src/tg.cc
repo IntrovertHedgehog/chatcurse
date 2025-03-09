@@ -2,10 +2,12 @@
 
 #include <memory.h>
 
+#include <cstdint>
 #include <cstdlib>
+#include <functional>
 #include <iostream>
 #include <memory>
-#include <tuple>
+#include <utility>
 
 #include "global.h"
 #include "td/telegram/td_api.h"
@@ -88,6 +90,33 @@ void TgClient::process_update(
           [this](td::td_api::updateAuthorizationState &u) {
             auth_state_ = std::move(u.authorization_state_);
             process_auth();
+          },
+          [this](td::td_api::updateUser &u) { process_update_user(u); },
+
+          [this](td::td_api::updateUserFullInfo &u) {
+            process_update_user_full_info(u);
+          },
+          [this](td::td_api::updateNewChat &u) { process_update_new_chat(u); },
+          [this](td::td_api::updateBasicGroup &u) {
+            process_update_basicgroup(u);
+          },
+          [this](td::td_api::updateBasicGroupFullInfo &u) {
+            process_update_basicgroup_full_info(u);
+          },
+          [this](td::td_api::updateSupergroup &u) {
+            process_update_supergroup(u);
+          },
+          [this](td::td_api::updateSupergroupFullInfo &u) {
+            process_update_supergroup_full_info(u);
+          },
+          [this](td::td_api::updateChatAddedToList &u) {
+            process_update_chat_added_to_list(u);
+          },
+          [this](td::td_api::updateChatPosition &u) {
+            process_update_chat_position(u);
+          },
+          [this](td::td_api::updateChatLastMessage &u) {
+            process_update_chat_last_message(u);
           },
           [](auto &o) {
             logger->warn("unhandled update " + td::td_api::to_string(o));
@@ -203,33 +232,84 @@ void TgClient::process_auth() {
           [](auto &) {}));
 }
 
+void TgClient::_update_position(td::td_api::int53 chat_id,
+                                td::td_api::chatPosition &u) {
+  int32_t list_id = u.list_->get_id();
+  auto &pos_map = app_state->id_to_position[list_id];
+  auto &pos_set = app_state->position_sets[list_id];
+  auto old_pos = pos_map.find(chat_id);
+  // if the chat does not have position (default 0), setting to 0 = remove
+  // then it's not in the list and should not be added
+  if (old_pos != pos_map.end()) {
+    // old_pos->second = old order_
+    pos_set.erase(std::make_pair(old_pos->second, chat_id));
+    if (u.order_) {
+      pos_set.insert(std::make_pair(u.order_, chat_id));
+      pos_map[chat_id] = u.order_;
+    } else {
+      pos_map.erase(chat_id);
+    }
+  }
+}
+
 void TgClient::process_update_user(td::td_api::updateUser &u) {
   app_state->id_to_user[u.user_->id_] = std::move(u.user_);
-};
+}
+
 void TgClient::process_update_user_full_info(
     td::td_api::updateUserFullInfo &u) {
   app_state->id_to_user_full_info[u.user_id_] = std::move(u.user_full_info_);
-};
+}
+
 void TgClient::process_update_new_chat(td::td_api::updateNewChat &u) {
-  app_state->id_to_chat[u.chat_->id_] = std::move(u.chat_);
-};
+  td::td_api::int53 chat_id = u.chat_->id_;
+  for (object_ptr<td::td_api::ChatList> &list : u.chat_->chat_lists_) {
+    app_state->id_to_position[list->get_id()][chat_id] = 0;
+    app_state->position_sets[list->get_id()].insert(std::make_pair(0, chat_id));
+  }
+
+  for (object_ptr<td::td_api::chatPosition> &pos : u.chat_->positions_) {
+    _update_position(chat_id, *pos);
+  }
+
+  app_state->id_to_chat[chat_id] = std::move(u.chat_);
+}
+
 void TgClient::process_update_basicgroup(td::td_api::updateBasicGroup &u) {
   app_state->id_to_basicgroup[u.basic_group_->id_] = std::move(u.basic_group_);
-};
+}
+
 void TgClient::process_update_basicgroup_full_info(
     td::td_api::updateBasicGroupFullInfo &u) {
   app_state->id_to_basicgroup_full_info[u.basic_group_id_] =
       std::move(u.basic_group_full_info_);
-};
+}
+
 void TgClient::process_update_supergroup(td::td_api::updateSupergroup &u) {
   app_state->id_to_supergroup[u.supergroup_->id_] = std::move(u.supergroup_);
-};
+}
+
 void TgClient::process_update_supergroup_full_info(
     td::td_api::updateSupergroupFullInfo &u) {
   app_state->id_to_supergroup_full_info[u.supergroup_id_] =
       std::move(u.supergroup_full_info_);
-};
+}
+
+void TgClient::process_update_chat_added_to_list(
+    td::td_api::updateChatAddedToList &u) {
+  app_state->id_to_position[u.chat_list_->get_id()][u.chat_id_] = 0;
+  app_state->position_sets[u.chat_list_->get_id()].insert(
+      std::make_pair(0, u.chat_id_));
+}
+
 void TgClient::process_update_chat_position(td::td_api::updateChatPosition &u) {
-};
+  _update_position(u.chat_id_, *u.position_);
+}
+
 void TgClient::process_update_chat_last_message(
-    td::td_api::updateChatLastMessage &u) {};
+    td::td_api::updateChatLastMessage &u) {
+  app_state->id_to_chat[u.chat_id_]->last_message_ = std::move(u.last_message_);
+  for (object_ptr<td::td_api::chatPosition> &pos : u.positions_) {
+    _update_position(u.chat_id_, *pos);
+  }
+};

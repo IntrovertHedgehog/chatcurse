@@ -59,6 +59,8 @@ class TgClient {
            std::function<void(td::td_api::object_ptr<td::td_api::Object>)>>
       handlers_;
 
+  void _update_position(td::td_api::int53, td::td_api::chatPosition &);
+
  public:
   shared_ptr<tl_app_state_struct> app_state;
   friend void call_init_event_handler(TgClient &cl);
@@ -94,6 +96,7 @@ class TgClient {
   void process_update_supergroup(td::td_api::updateSupergroup &);
   void process_update_supergroup_full_info(
       td::td_api::updateSupergroupFullInfo &);
+  void process_update_chat_added_to_list(td::td_api::updateChatAddedToList &);
   void process_update_chat_position(td::td_api::updateChatPosition &);
   void process_update_chat_last_message(td::td_api::updateChatLastMessage &);
 };

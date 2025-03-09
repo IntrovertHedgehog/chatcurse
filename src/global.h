@@ -7,12 +7,14 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <sys/eventfd.h>
 
+#include <cstdint>
 #include <initializer_list>
 #include <memory>
 #include <mutex>
 #include <queue>
 #include <set>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include <utility>
 
@@ -98,6 +100,11 @@ class tl_app_state_struct {
   std::unordered_map<td::td_api::int53,
                      object_ptr<td::td_api::supergroupFullInfo>>
       id_to_supergroup_full_info;
+  // class ID (for list type) -> chat id -> chat position
+  std::unordered_map<int32_t, std::set<std::pair<int64_t, td::td_api::int53>>>
+      position_sets;
+  std::unordered_map<int32_t, std::unordered_map<td::td_api::int53, int64_t>>
+      id_to_position;
 
   tl_app_state_struct()
       : mutexes{{_id_current_pane, std::make_shared<std::mutex>()},
