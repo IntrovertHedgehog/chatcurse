@@ -6,6 +6,7 @@
 #include <sys/prctl.h>
 #include <sys/select.h>
 #include <time.h>
+#include <unistd.h>
 
 #include <algorithm>
 #include <cctype>
@@ -14,16 +15,12 @@
 #include <cstdio>
 #include <cstring>
 #include <ctime>
-#include <exception>
-#include <format>
 #include <functional>
-#include <ios>
 #include <iostream>
 #include <memory>
 #include <ostream>
 #include <string>
 #include <thread>
-#include <unistd.h>
 
 #include "event_types.h"
 #include "global.h"
@@ -32,7 +29,6 @@
 #include "tg.h"
 #include "utils.h"
 
-using std::min;
 using std::string;
 
 int main(int argv, char** argc) {
@@ -65,8 +61,10 @@ int main(int argv, char** argc) {
     std::cout << "waiting for attachment, press enter to proceed..."
               << std::endl;
     while ((c = std::cin.get()) != 10) {
-      std::cout << (int)c << std::endl;
+      std::cout << static_cast<int>(c) << std::endl;
     }
+    logger->set_level(spdlog::level::debug);
+    logger->flush_on(spdlog::level::debug);
   }
 
   // authorization
@@ -78,7 +76,7 @@ int main(int argv, char** argc) {
   raw();
   keypad(stdscr, TRUE);
   noecho();
-  timeout(100);
+  timeout(0);
 
   mmask_t old_mm, new_mm = ALL_MOUSE_EVENTS | REPORT_MOUSE_POSITION;
   mousemask(new_mm, &old_mm);
@@ -87,6 +85,7 @@ int main(int argv, char** argc) {
 
   // reset magic when terminate in any case
   auto term = [](int s) {
+    logger->error("signal {}, terminating...", s);
     printf("\033[?1003l\n");
     fflush(stdout);
     endwin();
@@ -100,7 +99,7 @@ int main(int argv, char** argc) {
   refresh();
 
   init_config();
-  init_layout();
+  init_layout(*tgcl.app_state);
 
   logger->info("initialization finished");
 
@@ -111,24 +110,40 @@ int main(int argv, char** argc) {
   while (cont) {
     // update UI every loop
     process_input();
+    // TODO(hedgehog): do all update before moving on getting inputs
     shared_ptr<event_base> to_update = event_queue.pop_and_get();
-    if (!to_update) continue;
+    if (!to_update) {
+      logger->debug("nothing to update");
+      continue;
+    }
+    logger->debug("updating: {}", to_update->type);
     switch (to_update->type) {
       case ET_QUIT: {
+        logger->debug("ET_QUIT");
         cont = false;
         tgcl.app_state->set_terminating(true);
         break;
       }
       case ET_RESIZE: {
+        logger->debug("ET_RESIZE");
         shared_ptr<event_resize> ev =
             std::dynamic_pointer_cast<event_resize>(to_update);
-        resize(ev->side_w, ev->comp_h);
+        resize(*tgcl.app_state, ev->side_w, ev->comp_h);
+        update_panels();
+        doupdate();
+        break;
+      }
+      case ET_CHATLIST: {
+        logger->debug("ET_CHATLIST");
+        draw_side(*tgcl.app_state);
+        update_panels();
+        doupdate();
         break;
       }
     }
   }
 
-  // input_thread.join();
+  logger->info("quit main loop");
   tgcl_thread.join();
 
   printf("\033[?1003l\n");  // reset magic
@@ -136,9 +151,4 @@ int main(int argv, char** argc) {
   endwin();
 
   return 0;
-}
-
-void init_config() {
-  side_w = min(32, COLS / 4);
-  composer_h = min(6, LINES / 5);
 }

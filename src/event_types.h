@@ -3,6 +3,7 @@
 
 #define ET_QUIT 0
 #define ET_RESIZE 1
+#define ET_CHATLIST 2
 
 struct event_base {
   int type;
@@ -21,6 +22,10 @@ struct event_quit : public event_base {
 struct event_resize : public event_base {
   int side_w, comp_h;
   event_resize(int w, int h) : event_base(ET_RESIZE), side_w{w}, comp_h{h} {}
+};
+
+struct event_chatlist: public event_base {
+  event_chatlist() : event_base(ET_CHATLIST) {}
 };
 
 #endif  // INCLUDE_SRC_EVENT_TYPES_H_

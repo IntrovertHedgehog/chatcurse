@@ -3,13 +3,20 @@
 #include <curses.h>
 #include <panel.h>
 
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
 #include <format>
+#include <iterator>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "global.h"
+#include "td/telegram/td_api.h"
 #include "utils.h"
 
-void init_layout() {
+void init_layout(tl_app_state_struct &app_state) {
   WINDOW *side_win = newwin(LINES - composer_h, side_w, 0, 0),
          *main_win = newwin(LINES - composer_h, COLS - side_w, 0, side_w),
          *composer_win = newwin(composer_h, COLS, LINES - composer_h, 0);
@@ -21,7 +28,7 @@ void init_layout() {
   current_pan = ID_COMP;
 
   draw_border();
-  fill();
+  fill(app_state);
   update_panels();
   doupdate();
 }
@@ -35,7 +42,8 @@ void draw_border() {
   mvwaddch(panel_window(composer_pan), 0, side_w - 1, ACS_SSBS);
 }
 
-void resize(int new_side_w, int new_composer_h) {
+void resize(tl_app_state_struct &app_state, int new_side_w,
+            int new_composer_h) {
   logger->info(std::format("new size ({}, {})", new_side_w, new_composer_h));
 
   if (new_side_w >= COLS) return;
@@ -60,11 +68,8 @@ void resize(int new_side_w, int new_composer_h) {
   delwin(old_composer_win);
 
   draw_border();
-  fill(ID_SIDE);
-  fill(ID_MAIN);
-  fill(ID_COMP);
+  fill(app_state);
   update_panels();
-  doupdate();
 }
 
 void draw_cur() {
@@ -75,17 +80,17 @@ void draw_cur() {
   }
 }
 
-void fill() {
-  fill(ID_MAIN);
-  fill(ID_SIDE);
-  fill(ID_COMP);
+void fill(tl_app_state_struct &app_state) {
+  fill(app_state, ID_MAIN);
+  fill(app_state, ID_SIDE);
+  fill(app_state, ID_COMP);
 }
 
-void fill(int p) {
+void fill(tl_app_state_struct &app_state, int p) {
   if (p == ID_MAIN) {
     fill(main_pan, 'b', 0, 0, 0, 0);
   } else if (p == ID_SIDE) {
-    fill(side_pan, 'a', 0, 1, 0, 0);
+    draw_side(app_state);
   } else if (p == ID_COMP) {
     fill(composer_pan, 'c', 0, 0, 1, 0);
   }
@@ -104,4 +109,34 @@ void fill(PANEL *pan, char c, int offsetx, int cutoffx, int offsety,
     mvwaddstr(panel_window(pan), y, offsetx,
               std::string(maxx - offsetx - cutoffx, c).c_str());
   }
+}
+
+void draw_side(tl_app_state_struct &app_state) {
+  // auto &p = app_state.position_sets[td::td_api::chatListMain::ID];
+  // std::vector<std::string> chatlist;
+  // std::transform(
+  //     p.begin(), p.end(), std::back_inserter(chatlist),
+  //
+  //     [&m = app_state.id_to_chat](std::pair<int64_t, td::td_api::int53> pos) {
+  //       return m[pos.second]->title_;
+  //     });
+  //
+  // logger->debug("printing chatlist {}",
+  //              _from_container<std::vector<std::string>>(chatlist.begin(),
+  //                                                        chatlist.end(), chatlist.size()));
+  //
+  // for (size_t i = 0;
+  //      i < std::min(chatlist.size(), static_cast<size_t>(LINES - composer_h));
+  //      ++i) {
+  //   mvwaddstr(panel_window(side_pan), i, 0,
+  //             chatlist[i].substr(0, side_w - 1).c_str());
+  // }
+}
+
+void draw_main(tl_app_state_struct &app_state);
+void draw_composer(tl_app_state_struct &app_state);
+
+void init_config() {
+  side_w = std::min(32, COLS / 4);
+  composer_h = std::min(6, LINES / 5);
 }

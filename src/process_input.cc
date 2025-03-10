@@ -74,10 +74,10 @@ void process_B1_pressed(MEVENT *mevent) {
 
   if (edge) {
     input_state.state = S_MOUSE_DRAG;
-    logger->info("dragging edge {}", where);
+    logger->debug("dragging edge {}", where);
   } else {
     input_state.reset();
-    logger->info("choosing pane {}", where);
+    logger->debug("choosing pane {}", where);
   }
 }
 
@@ -92,18 +92,20 @@ void process_input() {
       break;
     }
     case KEY_RESIZE: {
-      logger->info("key resize received");
+      logger->debug("key: resize");
       event_queue.push(std::make_shared<event_resize>(side_w, composer_h));
       break;
     }
     case CTRL('q'): {
+      logger->debug("key: quit");
       event_queue.push(std::make_shared<event_quit>());
+      break;
     }
     case ERR: {
       break;
     }
     default: {
-      logger->info(std::format("unrecognized key event {}", c));
+      logger->debug(std::format("key: unrecognized key event {}", c));
       break;
     }
   }

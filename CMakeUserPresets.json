@@ -5,7 +5,9 @@
       "name": "default",
       "inherits": "vcpkg",
       "environment": {
-        "VCPKG_ROOT": "/home/hedgehog/.local/share/vcpkg"
+        "VCPKG_ROOT": "/home/hedgehog/.local/share/vcpkg",
+        "CC": "/usr/bin/clang",
+        "CXX": "/usr/bin/clang++"
       }
     }
   ]

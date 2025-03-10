@@ -8,13 +8,13 @@
 #include <sys/eventfd.h>
 
 #include <cstdint>
+#include <functional>
 #include <initializer_list>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <queue>
 #include <set>
-#include <string>
-#include <tuple>
 #include <unordered_map>
 #include <utility>
 
@@ -35,40 +35,13 @@ extern bool use_test_dc, logout_next, debug_attach;
 using std::shared_ptr;
 // event queue
 class event_queue_struct {
-  std::queue<shared_ptr<event_base>> event_queue;
+  std::queue<int> queue;
+  std::map<int, shared_ptr<event_base>> event_map;
   std::mutex q_mutex;
 
  public:
-  void push(shared_ptr<event_base> e) {
-    q_mutex.lock();
-    event_queue.push(e);
-    q_mutex.unlock();
-  }
-
-  shared_ptr<event_base> front() { return event_queue.front(); }
-
-  shared_ptr<event_base> pop_and_get() {
-    q_mutex.lock();
-    shared_ptr<event_base> res;
-    if (!event_queue.empty()) {
-      res = std::move(event_queue.front());
-      event_queue.pop();
-    }
-    q_mutex.unlock();
-    return res;
-  }
-
-  // shared_ptr<event_base> wait_pop() {
-  //   while (event_queue.empty()) {
-  //   }
-  //   return pop_and_get();
-  // }
-
-  void pop() {
-    q_mutex.lock();
-    event_queue.pop();
-    q_mutex.unlock();
-  }
+  void push(shared_ptr<event_base> e);
+  shared_ptr<event_base> pop_and_get();
 };
 
 extern event_queue_struct event_queue;
@@ -83,6 +56,7 @@ class tl_app_state_struct {
 
   std::unordered_map<int, shared_ptr<std::mutex>> mutexes;
 
+  // TODO(hedgehog): switch to shared_ptr and thread protect these
  public:
   std::unordered_map<td::td_api::int53, object_ptr<td::td_api::user>>
       id_to_user;
@@ -100,8 +74,10 @@ class tl_app_state_struct {
   std::unordered_map<td::td_api::int53,
                      object_ptr<td::td_api::supergroupFullInfo>>
       id_to_supergroup_full_info;
+  
   // class ID (for list type) -> chat id -> chat position
-  std::unordered_map<int32_t, std::set<std::pair<int64_t, td::td_api::int53>>>
+  typedef std::pair<int64_t, td::td_api::int53> p64_53;
+  std::unordered_map<int32_t, std::set<p64_53, std::greater<p64_53>>>
       position_sets;
   std::unordered_map<int32_t, std::unordered_map<td::td_api::int53, int64_t>>
       id_to_position;
