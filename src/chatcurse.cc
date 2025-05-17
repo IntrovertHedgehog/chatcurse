@@ -42,10 +42,12 @@ int main(int argv, char **argc) {
 
   for (int i = 1; i < argv; ++i) {
     logger->info("option " + string(argc[i]));
-    if (strcmp(argc[i], "--debug-attach") == 0) {
+    if (strcmp(argc[i], "--debug") == 0) {
+      logger->set_level(spdlog::level::debug);
+      logger->flush_on(spdlog::level::debug);
+    } else if (strcmp(argc[i], "--attach") == 0) {
       debug_attach = true;
       prctl(PR_SET_PTRACER, PR_SET_PTRACER_ANY);
-      logger->flush_on(spdlog::level::debug);
     } else if (strcmp(argc[i], "--use-test-dc") == 0) {
       use_test_dc = true;
     } else if (strcmp(argc[i], "--logout") == 0) {
@@ -63,8 +65,6 @@ int main(int argv, char **argc) {
     while ((c = std::cin.get()) != 10) {
       std::cout << static_cast<int>(c) << std::endl;
     }
-    logger->set_level(spdlog::level::debug);
-    logger->flush_on(spdlog::level::debug);
   }
 
   // authorization
@@ -138,6 +138,7 @@ int main(int argv, char **argc) {
           std::dynamic_pointer_cast<event_resize>(to_update);
       resize(*tgcl.app_state, ev->side_w, ev->comp_h);
       update_panels();
+      draw_cursor();
       doupdate();
       break;
     }
@@ -145,6 +146,17 @@ int main(int argv, char **argc) {
       logger->debug("ET_CHATLIST");
       draw_side(*tgcl.app_state);
       update_panels();
+      draw_cursor();
+      doupdate();
+      break;
+    }
+    case ET_CYCLE_PANEL: {
+      logger->debug("ET_CYCLE_PANEL");
+      current_pan <<= 1;
+      if (current_pan > ID_COMP) {
+        current_pan = 1;
+      }
+      draw_cursor();
       doupdate();
       break;
     }

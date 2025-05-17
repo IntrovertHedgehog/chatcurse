@@ -22,6 +22,7 @@ void fill(PANEL *pan, char c, int offsetx = 0, int cutoffx = 0, int offsety = 0,
 void draw_side(tl_app_state_struct &);
 void draw_main(tl_app_state_struct &);
 void draw_composer(tl_app_state_struct &);
+void draw_cursor();
 void init_config();
 void init_layout(tl_app_state_struct &);
 void draw_border();

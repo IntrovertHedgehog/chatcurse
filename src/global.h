@@ -27,8 +27,11 @@ extern std::shared_ptr<spdlog::logger> logger;
 // UI
 // composer_pan include top line, side_pan include side line
 extern PANEL *composer_pan, *side_pan, *main_pan, *float_pan;
-extern int side_w, composer_h;
-extern int current_pan, comcurx, comcury;
+// side_w includes right border
+// composer_h includes top border
+extern int side_w, composer_h, current_pan, side_scroll_offset;
+// in pair{y, x}
+extern std::map<int, std::pair<int, int>> cursor_positions;
 
 // options
 extern bool use_test_dc, logout_next, debug_attach;
@@ -82,13 +85,15 @@ public:
   std::unordered_map<int32_t, std::unordered_map<td::td_api::int53, int64_t>>
       id_to_position;
 
+  // chosen chatlist
+  td::td_api::int53 chosen_chat_id;
+
   std::unordered_map<int, std::mutex> ma;
 
   tl_app_state_struct()
       : mutexes{{_id_current_pane, std::make_shared<std::mutex>()},
                 {_id_chatboxes, std::make_shared<std::mutex>()},
-                {_id_terminating, std::make_shared<std::mutex>()}} {
-  }
+                {_id_terminating, std::make_shared<std::mutex>()}} {}
   int current_pane();
   void set_current_pane(int);
   bool terminating();

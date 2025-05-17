@@ -1,7 +1,6 @@
 #include "layout.h"
 
 #include <curses.h>
-#include <mutex>
 #include <panel.h>
 
 #include <algorithm>
@@ -9,6 +8,7 @@
 #include <cstdint>
 #include <format>
 #include <iterator>
+#include <mutex>
 #include <string>
 #include <utility>
 #include <vector>
@@ -25,7 +25,10 @@ void init_layout(tl_app_state_struct &app_state) {
   side_pan = new_panel(side_win);
   main_pan = new_panel(main_win);
   composer_pan = new_panel(composer_win);
-  comcurx = 0, comcury = 1;
+  cursor_positions[ID_COMP] = {1, 0};
+  cursor_positions[ID_SIDE] = {0, 0};
+  cursor_positions[ID_MAIN] = {0, 0};
+  cursor_positions[ID_FLOAT] = {0, 0};
   current_pan = ID_COMP;
 
   draw_border();
@@ -77,7 +80,8 @@ void resize(tl_app_state_struct &app_state, int new_side_w,
 
 void draw_cur() {
   if (current_pan == ID_COMP) {
-    wmove(panel_window(composer_pan), comcury, comcurx);
+    auto &com_cur = cursor_positions[ID_COMP];
+    wmove(panel_window(composer_pan), com_cur.first, com_cur.second);
   } else {
     curs_set(0);
   }
@@ -103,12 +107,7 @@ void fill(PANEL *pan, char c, int offsetx, int cutoffx, int offsety,
           int cutoffy) {
   int maxx, maxy;
   getmaxyx(panel_window(pan), maxy, maxx);
-  // logger->info(std::format("fill {}, {}, {}, {}, {}, {}, {}", c, offsetx,
-  // cutoffx,
-  //                       offsety, cutoffy, maxy, maxx));
   for (int y = offsety; y < maxy - cutoffy; ++y) {
-    // logger->info(std::format("pos {}, {} size {}", y, offsetx,
-    //                       maxx - offsetx - cutoffx));
     mvwaddstr(panel_window(pan), y, offsetx,
               std::string(maxx - offsetx - cutoffx, c).c_str());
   }
@@ -120,30 +119,55 @@ void draw_side(tl_app_state_struct &app_state) {
   logger->debug("position set size {}", position_sets.size());
   size_t list_size =
       std::min(position_sets.size(), static_cast<size_t>(LINES - composer_h));
-  std::vector<std::string> chatlist_name(list_size);
 
   auto pos = position_sets.begin();
+  auto &id_to_chat = app_state.id_to_chat;
+
   for (size_t i = 0; i < list_size; ++i) {
-    auto &id_to_chat = app_state.id_to_chat;
-    logger->debug("chat item {}({}, {})", id_to_chat[pos->second]->title_,
-                  pos->first, pos->second);
-    chatlist_name[i] = id_to_chat[pos->second]->title_;
+    auto &chat = id_to_chat[pos->second];
+    if (i == 0) {
+      app_state.chosen_chat_id = chat->id_;
+    }
+    std::string name(chat->title_);
+    if (name.size() < static_cast<size_t>(side_w - 1)) {
+      name.insert(name.end(), side_w - 1 - name.size(), ' ');
+    }
+
+    if (app_state.chosen_chat_id == chat->id_) {
+      logger->debug("reversing {}", name);
+      wattron(panel_window(side_pan), A_REVERSE);
+    }
+    mvwaddstr(panel_window(side_pan), i, 0, name.substr(0, side_w - 1).c_str());
+    if (app_state.chosen_chat_id == chat->id_) {
+      wattroff(panel_window(side_pan), A_REVERSE);
+    }
     ++pos;
-  }
-
-  logger->debug(
-      "printing chatlist {}",
-      _from_container<std::vector<std::string>>(
-          chatlist_name.begin(), chatlist_name.end(), chatlist_name.size()));
-
-  for (size_t i = 0; i < list_size; ++i) {
-    mvwaddstr(panel_window(side_pan), i, 0,
-              chatlist_name[i].substr(0, side_w - 1).c_str());
   }
 }
 
 void draw_main(tl_app_state_struct &app_state);
 void draw_composer(tl_app_state_struct &app_state);
+
+void draw_cursor() {
+  WINDOW *win;
+  switch (current_pan) {
+  case ID_SIDE:
+    win = panel_window(side_pan);
+    break;
+  case ID_MAIN:
+    win = panel_window(main_pan);
+    break;
+  case ID_COMP:
+    win = panel_window(composer_pan);
+    break;
+  }
+
+  auto &curpos = cursor_positions[current_pan];
+  logger->debug("draw_cursor current_pan({}) curpos({}, {})", current_pan,
+                curpos.first, curpos.second);
+  wmove(win, curpos.first, curpos.second);
+  wnoutrefresh(win);
+};
 
 void init_config() {
   side_w = std::min(32, COLS / 4);

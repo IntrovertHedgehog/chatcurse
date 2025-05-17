@@ -4,6 +4,7 @@
 #define ET_QUIT 0
 #define ET_RESIZE 1
 #define ET_CHATLIST 2
+#define ET_CYCLE_PANEL 3
 
 struct event_base {
   int type;
@@ -17,6 +18,10 @@ struct event_base {
 
 struct event_quit : public event_base {
   event_quit() : event_base(ET_QUIT) {}
+};
+
+struct event_cycle_panel: public event_base {
+  event_cycle_panel(): event_base(ET_CYCLE_PANEL) {}
 };
 
 struct event_resize : public event_base {

@@ -101,6 +101,10 @@ void process_input() {
       event_queue.push(std::make_shared<event_quit>());
       break;
     }
+    case '\t': {
+      logger->debug("key: tab");
+      event_queue.push(std::make_shared<event_cycle_panel>());
+    }
     case ERR: {
       break;
     }

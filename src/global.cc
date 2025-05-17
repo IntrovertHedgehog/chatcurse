@@ -8,8 +8,8 @@
 
 std::shared_ptr<spdlog::logger> logger;
 PANEL *composer_pan, *side_pan, *main_pan, *float_pan;
-int side_w, composer_h;
-int current_pan, comcurx, comcury;
+int side_w, composer_h, current_pan;
+std::map<int, std::pair<int, int>> cursor_positions;
 bool use_test_dc = false, logout_next = false, debug_attach = false;
 
 void event_queue_struct::push(shared_ptr<event_base> e) {

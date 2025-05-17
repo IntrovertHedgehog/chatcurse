@@ -53,7 +53,7 @@ void TgClient::set_response_handlers() {
     if (app_state->terminating()) {
       return;
     }
-    process_response(client_manager_->receive(1));
+    process_response(client_manager_->receive(0.3));
   }
 }
 
