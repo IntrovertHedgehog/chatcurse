@@ -18,7 +18,6 @@ updateBusinessMessageEdited
 updateBusinessMessagesDeleted
 updateChatAccentColors
 updateChatActiveStories
-updateChatAddedToList
 updateChatBackground
 updateChatBoost
 updateChatBusinessBotManageBar
@@ -75,11 +74,11 @@ updateUserStatus
 
 ## priority
 
-
+updateAuthorizationState
 updateUser
 updateUserFullInfo
 updateNewChat
-updateAuthorizationState
+updateChatAddedToList
 
 updateBasicGroup
 updateBasicGroupFullInfo

@@ -68,6 +68,8 @@ class TgClient {
   // initialize authentication and setup db
   // at then end of this function it's safe to show the ui
   void init_auth();
+  // initialize data after authorization and ui ready
+  void init_data(int);
   // set up handler and listener
   void set_response_handlers();
   td::td_api::int32 next_query_id() { return ++current_query_id_; }

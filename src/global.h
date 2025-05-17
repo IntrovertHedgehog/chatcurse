@@ -25,6 +25,7 @@
 extern std::shared_ptr<spdlog::logger> logger;
 
 // UI
+// composer_pan include top line, side_pan include side line
 extern PANEL *composer_pan, *side_pan, *main_pan, *float_pan;
 extern int side_w, composer_h;
 extern int current_pan, comcurx, comcury;
@@ -33,13 +34,14 @@ extern int current_pan, comcurx, comcury;
 extern bool use_test_dc, logout_next, debug_attach;
 
 using std::shared_ptr;
+
 // event queue
 class event_queue_struct {
   std::queue<int> queue;
   std::map<int, shared_ptr<event_base>> event_map;
   std::mutex q_mutex;
 
- public:
+public:
   void push(shared_ptr<event_base> e);
   shared_ptr<event_base> pop_and_get();
 };
@@ -48,16 +50,14 @@ extern event_queue_struct event_queue;
 using td::td_api::object_ptr;
 
 class tl_app_state_struct {
-  static int constexpr _id_current_pane = 1, _id_chatboxes = 2,
-                       _id_terminating = 3;
-
   int _current_pane;
   bool _terminating;
 
-  std::unordered_map<int, shared_ptr<std::mutex>> mutexes;
-
   // TODO(hedgehog): switch to shared_ptr and thread protect these
- public:
+public:
+  static int constexpr _id_current_pane = 1, _id_chatboxes = 2,
+                       _id_terminating = 3;
+  std::unordered_map<int, shared_ptr<std::mutex>> mutexes;
   std::unordered_map<td::td_api::int53, object_ptr<td::td_api::user>>
       id_to_user;
   std::unordered_map<td::td_api::int53, object_ptr<td::td_api::userFullInfo>>
@@ -74,7 +74,7 @@ class tl_app_state_struct {
   std::unordered_map<td::td_api::int53,
                      object_ptr<td::td_api::supergroupFullInfo>>
       id_to_supergroup_full_info;
-  
+
   // class ID (for list type) -> chat id -> chat position
   typedef std::pair<int64_t, td::td_api::int53> p64_53;
   std::unordered_map<int32_t, std::set<p64_53, std::greater<p64_53>>>
@@ -82,10 +82,13 @@ class tl_app_state_struct {
   std::unordered_map<int32_t, std::unordered_map<td::td_api::int53, int64_t>>
       id_to_position;
 
+  std::unordered_map<int, std::mutex> ma;
+
   tl_app_state_struct()
       : mutexes{{_id_current_pane, std::make_shared<std::mutex>()},
                 {_id_chatboxes, std::make_shared<std::mutex>()},
-                {_id_terminating, std::make_shared<std::mutex>()}} {}
+                {_id_terminating, std::make_shared<std::mutex>()}} {
+  }
   int current_pane();
   void set_current_pane(int);
   bool terminating();
@@ -97,4 +100,4 @@ class tl_app_state_struct {
 // extern std::unordered_map<std::string, shared_ptr<app_state>>
 //     application_states;
 
-#endif  // INCLUDE_SRC_GLOBAL_H_
+#endif // INCLUDE_SRC_GLOBAL_H_

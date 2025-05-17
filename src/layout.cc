@@ -1,6 +1,7 @@
 #include "layout.h"
 
 #include <curses.h>
+#include <mutex>
 #include <panel.h>
 
 #include <algorithm>
@@ -46,8 +47,10 @@ void resize(tl_app_state_struct &app_state, int new_side_w,
             int new_composer_h) {
   logger->info(std::format("new size ({}, {})", new_side_w, new_composer_h));
 
-  if (new_side_w >= COLS) return;
-  if (new_composer_h >= LINES) return;
+  if (new_side_w >= COLS)
+    return;
+  if (new_composer_h >= LINES)
+    return;
 
   side_w = new_side_w;
   composer_h = new_composer_h;
@@ -112,25 +115,31 @@ void fill(PANEL *pan, char c, int offsetx, int cutoffx, int offsety,
 }
 
 void draw_side(tl_app_state_struct &app_state) {
-  // auto &p = app_state.position_sets[td::td_api::chatListMain::ID];
-  // std::vector<std::string> chatlist;
-  // std::transform(
-  //     p.begin(), p.end(), std::back_inserter(chatlist),
-  //
-  //     [&m = app_state.id_to_chat](std::pair<int64_t, td::td_api::int53> pos) {
-  //       return m[pos.second]->title_;
-  //     });
-  //
-  // logger->debug("printing chatlist {}",
-  //              _from_container<std::vector<std::string>>(chatlist.begin(),
-  //                                                        chatlist.end(), chatlist.size()));
-  //
-  // for (size_t i = 0;
-  //      i < std::min(chatlist.size(), static_cast<size_t>(LINES - composer_h));
-  //      ++i) {
-  //   mvwaddstr(panel_window(side_pan), i, 0,
-  //             chatlist[i].substr(0, side_w - 1).c_str());
-  // }
+  std::lock_guard l(*app_state.mutexes[tl_app_state_struct::_id_chatboxes]);
+  auto &position_sets = app_state.position_sets[td::td_api::chatListMain::ID];
+  logger->debug("position set size {}", position_sets.size());
+  size_t list_size =
+      std::min(position_sets.size(), static_cast<size_t>(LINES - composer_h));
+  std::vector<std::string> chatlist_name(list_size);
+
+  auto pos = position_sets.begin();
+  for (size_t i = 0; i < list_size; ++i) {
+    auto &id_to_chat = app_state.id_to_chat;
+    logger->debug("chat item {}({}, {})", id_to_chat[pos->second]->title_,
+                  pos->first, pos->second);
+    chatlist_name[i] = id_to_chat[pos->second]->title_;
+    ++pos;
+  }
+
+  logger->debug(
+      "printing chatlist {}",
+      _from_container<std::vector<std::string>>(
+          chatlist_name.begin(), chatlist_name.end(), chatlist_name.size()));
+
+  for (size_t i = 0; i < list_size; ++i) {
+    mvwaddstr(panel_window(side_pan), i, 0,
+              chatlist_name[i].substr(0, side_w - 1).c_str());
+  }
 }
 
 void draw_main(tl_app_state_struct &app_state);

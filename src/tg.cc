@@ -7,6 +7,7 @@
 #include <functional>
 #include <iostream>
 #include <memory>
+#include <mutex>
 #include <utility>
 
 #include "event_types.h"
@@ -37,8 +38,13 @@ void TgClient::init_auth() {
       break;
     }
   }
+}
+
+// is called from main (ui) thread
+void TgClient::init_data(int chat_list_size) {
+  // request chat list
   send_query(make_object<td::td_api::loadChats>(
-                 make_object<td::td_api::chatListMain>(), 10),
+                 make_object<td::td_api::chatListMain>(), chat_list_size),
              {});
 }
 
@@ -83,6 +89,7 @@ void TgClient::process_response(td::ClientManager::Response response) {
 
 void TgClient::process_update(
     td::td_api::object_ptr<td::td_api::Object> object) {
+  logger->debug("processing update {}", to_string(object));
   td::td_api::downcast_call(
       *object,
       overloaded(
@@ -129,7 +136,7 @@ void TgClient::process_auth() {
           [this](td::td_api::authorizationStateWaitTdlibParameters &) {
             td::td_api::object_ptr<td::td_api::setTdlibParameters> req =
                 td::td_api::make_object<td::td_api::setTdlibParameters>();
-            req->use_test_dc_ = use_test_dc;  // TODO(hedgehog): make option
+            req->use_test_dc_ = use_test_dc; // TODO(hedgehog): make option
             req->database_directory_ = "tmp/db";
             req->use_message_database_ = true;
             req->use_secret_chats_ = true;
@@ -232,22 +239,22 @@ void TgClient::process_auth() {
 
 void TgClient::_update_position(td::td_api::int53 chat_id,
                                 td::td_api::chatPosition &u) {
-  // int32_t list_id = u.list_->get_id();
-  // auto &pos_map = app_state->id_to_position[list_id];
-  // auto &pos_set = app_state->position_sets[list_id];
-  // auto old_pos = pos_map.find(chat_id);
-  // // if the chat does not have position (default 0), setting to 0 = remove
-  // // then it's not in the list and should not be added
-  // if (old_pos != pos_map.end()) {
-  //   // old_pos->second = old order_
-  //   pos_set.erase(std::make_pair(old_pos->second, chat_id));
-  //   if (u.order_) {
-  //     pos_set.insert(std::make_pair(u.order_, chat_id));
-  //     pos_map[chat_id] = u.order_;
-  //   } else {
-  //     pos_map.erase(chat_id);
-  //   }
-  // }
+  int32_t list_id = u.list_->get_id();
+  auto &pos_map = app_state->id_to_position[list_id];
+  auto &pos_set = app_state->position_sets[list_id];
+  auto old_pos = pos_map.find(chat_id);
+  // if the chat does not have position (default 0), setting to 0 = remove
+  // then it's not in the list and should not be added
+  if (old_pos != pos_map.end()) {
+    // old_pos->second = old order_
+    pos_set.erase(std::make_pair(old_pos->second, chat_id));
+    if (u.order_) {
+      pos_set.insert(std::make_pair(u.order_, chat_id));
+      pos_map[chat_id] = u.order_;
+    } else {
+      pos_map.erase(chat_id);
+    }
+  }
 }
 
 void TgClient::process_update_user(td::td_api::updateUser &u) {
@@ -262,6 +269,7 @@ void TgClient::process_update_user_full_info(
 }
 
 void TgClient::process_update_new_chat(td::td_api::updateNewChat &u) {
+  std::lock_guard l(*app_state->mutexes[tl_app_state_struct::_id_chatboxes]);
   logger->debug("process_update_new_chat");
   td::td_api::int53 chat_id = u.chat_->id_;
   for (object_ptr<td::td_api::ChatList> &list : u.chat_->chat_lists_) {
@@ -273,17 +281,13 @@ void TgClient::process_update_new_chat(td::td_api::updateNewChat &u) {
     _update_position(chat_id, *pos);
   }
 
-  if (!u.chat_->chat_lists_.empty()) {
-    event_queue.push(std::make_shared<event_base>(ET_CHATLIST));
-  }
-
+  event_queue.push(std::make_shared<event_base>(ET_CHATLIST));
   app_state->id_to_chat[chat_id] = std::move(u.chat_);
 }
 
 void TgClient::process_update_basicgroup(td::td_api::updateBasicGroup &u) {
   logger->debug("process_update_basicgroup");
   app_state->id_to_basicgroup[u.basic_group_->id_] = std::move(u.basic_group_);
-  event_queue.push(std::make_shared<event_base>(ET_CHATLIST));
 }
 
 void TgClient::process_update_basicgroup_full_info(
@@ -307,6 +311,7 @@ void TgClient::process_update_supergroup_full_info(
 
 void TgClient::process_update_chat_added_to_list(
     td::td_api::updateChatAddedToList &u) {
+  std::lock_guard l(*app_state->mutexes[tl_app_state_struct::_id_chatboxes]);
   logger->debug("process_update_chat_added_to_list");
   app_state->id_to_position[u.chat_list_->get_id()][u.chat_id_] = 0;
   app_state->position_sets[u.chat_list_->get_id()].insert(
@@ -315,6 +320,7 @@ void TgClient::process_update_chat_added_to_list(
 }
 
 void TgClient::process_update_chat_position(td::td_api::updateChatPosition &u) {
+  std::lock_guard l(*app_state->mutexes[tl_app_state_struct::_id_chatboxes]);
   logger->debug("process_update_chat_position");
   _update_position(u.chat_id_, *u.position_);
   event_queue.push(std::make_shared<event_base>(ET_CHATLIST));
@@ -322,13 +328,14 @@ void TgClient::process_update_chat_position(td::td_api::updateChatPosition &u) {
 
 void TgClient::process_update_chat_last_message(
     td::td_api::updateChatLastMessage &u) {
+  std::lock_guard l(*app_state->mutexes[tl_app_state_struct::_id_chatboxes]);
   logger->debug("process_update_chat_last_message");
   app_state->id_to_chat[u.chat_id_]->last_message_ = std::move(u.last_message_);
 
   if (!u.positions_.empty()) {
-    event_queue.push(std::make_shared<event_base>(ET_CHATLIST));
     for (object_ptr<td::td_api::chatPosition> &pos : u.positions_) {
       _update_position(u.chat_id_, *pos);
     }
   }
-};
+  event_queue.push(std::make_shared<event_base>(ET_CHATLIST));
+}

@@ -8,7 +8,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#include <algorithm>
 #include <cctype>
 #include <cmath>
 #include <csignal>
@@ -31,13 +30,13 @@
 
 using std::string;
 
-int main(int argv, char** argc) {
+int main(int argv, char **argc) {
   std::cout << "Starting chatcurse..." << std::endl;
 
   try {
     logger = spdlog::basic_logger_mt("chatcurse", "tmp/debug.log", true);
     logger->flush_on(spdlog::level::info);
-  } catch (spdlog::spdlog_ex& e) {
+  } catch (spdlog::spdlog_ex &e) {
     std::cerr << "spdlog error: " << e.what() << std::endl;
   }
 
@@ -46,6 +45,7 @@ int main(int argv, char** argc) {
     if (strcmp(argc[i], "--debug-attach") == 0) {
       debug_attach = true;
       prctl(PR_SET_PTRACER, PR_SET_PTRACER_ANY);
+      logger->flush_on(spdlog::level::debug);
     } else if (strcmp(argc[i], "--use-test-dc") == 0) {
       use_test_dc = true;
     } else if (strcmp(argc[i], "--logout") == 0) {
@@ -80,8 +80,8 @@ int main(int argv, char** argc) {
 
   mmask_t old_mm, new_mm = ALL_MOUSE_EVENTS | REPORT_MOUSE_POSITION;
   mousemask(new_mm, &old_mm);
-  mouseinterval(0);         // do not distinguish click from press
-  printf("\033[?1003h\n");  // magic for x-based terminal
+  mouseinterval(0);        // do not distinguish click from press
+  printf("\033[?1003h\n"); // magic for x-based terminal
 
   // reset magic when terminate in any case
   auto term = [](int s) {
@@ -101,9 +101,17 @@ int main(int argv, char** argc) {
   init_config();
   init_layout(*tgcl.app_state);
 
+  // initial data display (chatlist, messages, etc.)
+  {
+    int chat_list_size = getmaxy(panel_window(side_pan));
+    tgcl.init_data(chat_list_size);
+  }
+
   logger->info("initialization finished");
 
   // spawn thread to process tg input
+  // ref(tgcl) -> reference_wrapper, otherwise thread constructor will copy
+  // construct the TgClient object
   std::thread tgcl_thread(&TgClient::set_response_handlers, std::ref(tgcl));
 
   bool cont = true;
@@ -113,40 +121,40 @@ int main(int argv, char** argc) {
     // TODO(hedgehog): do all update before moving on getting inputs
     shared_ptr<event_base> to_update = event_queue.pop_and_get();
     if (!to_update) {
-      logger->debug("nothing to update");
+      // logger->debug("nothing to update");
       continue;
     }
     logger->debug("updating: {}", to_update->type);
     switch (to_update->type) {
-      case ET_QUIT: {
-        logger->debug("ET_QUIT");
-        cont = false;
-        tgcl.app_state->set_terminating(true);
-        break;
-      }
-      case ET_RESIZE: {
-        logger->debug("ET_RESIZE");
-        shared_ptr<event_resize> ev =
-            std::dynamic_pointer_cast<event_resize>(to_update);
-        resize(*tgcl.app_state, ev->side_w, ev->comp_h);
-        update_panels();
-        doupdate();
-        break;
-      }
-      case ET_CHATLIST: {
-        logger->debug("ET_CHATLIST");
-        draw_side(*tgcl.app_state);
-        update_panels();
-        doupdate();
-        break;
-      }
+    case ET_QUIT: {
+      logger->debug("ET_QUIT");
+      cont = false;
+      tgcl.app_state->set_terminating(true);
+      break;
+    }
+    case ET_RESIZE: {
+      logger->debug("ET_RESIZE");
+      shared_ptr<event_resize> ev =
+          std::dynamic_pointer_cast<event_resize>(to_update);
+      resize(*tgcl.app_state, ev->side_w, ev->comp_h);
+      update_panels();
+      doupdate();
+      break;
+    }
+    case ET_CHATLIST: {
+      logger->debug("ET_CHATLIST");
+      draw_side(*tgcl.app_state);
+      update_panels();
+      doupdate();
+      break;
+    }
     }
   }
 
   logger->info("quit main loop");
   tgcl_thread.join();
 
-  printf("\033[?1003l\n");  // reset magic
+  printf("\033[?1003l\n"); // reset magic
   mousemask(old_mm, NULL);
   endwin();
 
