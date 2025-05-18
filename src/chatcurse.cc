@@ -103,7 +103,7 @@ int main(int argv, char **argc) {
 
   // initial data display (chatlist, messages, etc.)
   {
-    int chat_list_size = getmaxy(panel_window(side_pan));
+    int chat_list_size = getmaxy(panel_window(panels[ID_SIDE]));
     tgcl.init_data(chat_list_size);
   }
 

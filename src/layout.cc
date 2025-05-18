@@ -5,13 +5,10 @@
 
 #include <algorithm>
 #include <cstddef>
-#include <cstdint>
 #include <format>
-#include <iterator>
 #include <mutex>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include "global.h"
 #include "td/telegram/td_api.h"
@@ -22,13 +19,15 @@ void init_layout(tl_app_state_struct &app_state) {
          *main_win = newwin(LINES - composer_h, COLS - side_w, 0, side_w),
          *composer_win = newwin(composer_h, COLS, LINES - composer_h, 0);
 
-  side_pan = new_panel(side_win);
-  main_pan = new_panel(main_win);
-  composer_pan = new_panel(composer_win);
+  panels[ID_SIDE] = new_panel(side_win);
+  panels[ID_MAIN] = new_panel(main_win);
+  panels[ID_COMP] = new_panel(composer_win);
+
   cursor_positions[ID_COMP] = {1, 0};
   cursor_positions[ID_SIDE] = {0, 0};
   cursor_positions[ID_MAIN] = {0, 0};
   cursor_positions[ID_FLOAT] = {0, 0};
+
   current_pan = ID_COMP;
 
   draw_border();
@@ -39,11 +38,11 @@ void init_layout(tl_app_state_struct &app_state) {
 
 // always draw borders before anything else
 void draw_border() {
-  wborder(panel_window(side_pan), ' ', 0, ' ', ' ', ' ', ACS_VLINE, ' ',
+  wborder(panel_window(panels[ID_SIDE]), ' ', 0, ' ', ' ', ' ', ACS_VLINE, ' ',
           ACS_VLINE);
-  wborder(panel_window(composer_pan), ' ', ' ', ACS_HLINE, ' ', ACS_HLINE,
+  wborder(panel_window(panels[ID_COMP]), ' ', ' ', ACS_HLINE, ' ', ACS_HLINE,
           ACS_HLINE, ' ', ' ');
-  mvwaddch(panel_window(composer_pan), 0, side_w - 1, ACS_SSBS);
+  mvwaddch(panel_window(panels[ID_COMP]), 0, side_w - 1, ACS_SSBS);
 }
 
 void resize(tl_app_state_struct &app_state, int new_side_w,
@@ -61,13 +60,13 @@ void resize(tl_app_state_struct &app_state, int new_side_w,
   WINDOW *side_win = newwin(LINES - composer_h, side_w, 0, 0),
          *main_win = newwin(LINES - composer_h, COLS - side_w, 0, side_w),
          *composer_win = newwin(composer_h, COLS, LINES - composer_h, 0),
-         *old_side_win = panel_window(side_pan),
-         *old_main_win = panel_window(main_pan),
-         *old_composer_win = panel_window(composer_pan);
+         *old_side_win = panel_window(panels[ID_SIDE]),
+         *old_main_win = panel_window(panels[ID_MAIN]),
+         *old_composer_win = panel_window(panels[ID_COMP]);
 
-  replace_panel(side_pan, side_win);
-  replace_panel(main_pan, main_win);
-  replace_panel(composer_pan, composer_win);
+  replace_panel(panels[ID_SIDE], side_win);
+  replace_panel(panels[ID_MAIN], main_win);
+  replace_panel(panels[ID_COMP], composer_win);
 
   delwin(old_side_win);
   delwin(old_main_win);
@@ -81,7 +80,7 @@ void resize(tl_app_state_struct &app_state, int new_side_w,
 void draw_cur() {
   if (current_pan == ID_COMP) {
     auto &com_cur = cursor_positions[ID_COMP];
-    wmove(panel_window(composer_pan), com_cur.first, com_cur.second);
+    wmove(panel_window(panels[ID_COMP]), com_cur.first, com_cur.second);
   } else {
     curs_set(0);
   }
@@ -95,11 +94,11 @@ void fill(tl_app_state_struct &app_state) {
 
 void fill(tl_app_state_struct &app_state, int p) {
   if (p == ID_MAIN) {
-    fill(main_pan, 'b', 0, 0, 0, 0);
+    fill(panels[ID_MAIN], 'b', 0, 0, 0, 0);
   } else if (p == ID_SIDE) {
     draw_side(app_state);
   } else if (p == ID_COMP) {
-    fill(composer_pan, 'c', 0, 0, 1, 0);
+    fill(panels[ID_COMP], 'c', 0, 0, 1, 0);
   }
 }
 
@@ -135,11 +134,11 @@ void draw_side(tl_app_state_struct &app_state) {
 
     if (app_state.chosen_chat_id == chat->id_) {
       logger->debug("reversing {}", name);
-      wattron(panel_window(side_pan), A_REVERSE);
+      wattron(panel_window(panels[ID_SIDE]), A_REVERSE);
     }
-    mvwaddstr(panel_window(side_pan), i, 0, name.substr(0, side_w - 1).c_str());
+    mvwaddstr(panel_window(panels[ID_SIDE]), i, 0, name.substr(0, side_w - 1).c_str());
     if (app_state.chosen_chat_id == chat->id_) {
-      wattroff(panel_window(side_pan), A_REVERSE);
+      wattroff(panel_window(panels[ID_SIDE]), A_REVERSE);
     }
     ++pos;
   }
@@ -152,13 +151,13 @@ void draw_cursor() {
   WINDOW *win;
   switch (current_pan) {
   case ID_SIDE:
-    win = panel_window(side_pan);
+    win = panel_window(panels[ID_SIDE]);
     break;
   case ID_MAIN:
-    win = panel_window(main_pan);
+    win = panel_window(panels[ID_MAIN]);
     break;
   case ID_COMP:
-    win = panel_window(composer_pan);
+    win = panel_window(panels[ID_COMP]);
     break;
   }
 

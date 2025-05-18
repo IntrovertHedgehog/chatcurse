@@ -27,6 +27,7 @@ extern std::shared_ptr<spdlog::logger> logger;
 // UI
 // composer_pan include top line, side_pan include side line
 extern PANEL *composer_pan, *side_pan, *main_pan, *float_pan;
+extern std::map<int, PANEL*> panels;
 // side_w includes right border
 // composer_h includes top border
 extern int side_w, composer_h, current_pan, side_scroll_offset;

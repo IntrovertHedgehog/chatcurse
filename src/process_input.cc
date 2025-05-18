@@ -89,7 +89,7 @@ void process_input(tl_app_state_struct &app_state, bool &cont) {
   switch (c) {
   case KEY_MOUSE: {
     if (getmouse(&mevent) == OK) {
-      process_mouse(&mevent);
+      process_mouse(app_state, &mevent);
     }
     break;
   }
