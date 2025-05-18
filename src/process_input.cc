@@ -11,7 +11,7 @@
 #include "utils.h"
 
 struct input_state_str {
-  int state = S_NONE;  // mouse_dragging, key prefix, none
+  int state = S_NONE; // mouse_dragging, key prefix, none
   std::vector<int> kbuf;
   struct {
     bool edge;
@@ -25,7 +25,7 @@ struct input_state_str {
 
 input_state_str input_state;
 
-void process_mouse(MEVENT *mevent) {
+void process_mouse(tl_app_state_struct &app_state, MEVENT *mevent) {
   if ((mevent->bstate & BUTTON1_PRESSED)) {
     process_B1_pressed(mevent);
   } else if (mevent->bstate & BUTTON1_RELEASED) {
@@ -39,8 +39,10 @@ void process_mouse(MEVENT *mevent) {
       if (input_state.mbuf.where & ID_E_COMP_TOP) {
         new_composer_h = LINES - mevent->y;
       }
-      event_queue.push(
-          std::make_shared<event_resize>(new_side_w, new_composer_h));
+      resize(app_state, new_side_w, new_composer_h);
+      update_panels();
+      draw_cursor();
+      doupdate();
     }
   }
 }
@@ -81,36 +83,46 @@ void process_B1_pressed(MEVENT *mevent) {
   }
 }
 
-void process_input() {
+void process_input(tl_app_state_struct &app_state, bool &cont) {
   MEVENT mevent;
   int c = getch();
   switch (c) {
-    case KEY_MOUSE: {
-      if (getmouse(&mevent) == OK) {
-        process_mouse(&mevent);
-      }
-      break;
+  case KEY_MOUSE: {
+    if (getmouse(&mevent) == OK) {
+      process_mouse(&mevent);
     }
-    case KEY_RESIZE: {
-      logger->debug("key: resize");
-      event_queue.push(std::make_shared<event_resize>(side_w, composer_h));
-      break;
+    break;
+  }
+  case KEY_RESIZE: {
+    logger->debug("key: resize");
+    resize(app_state, side_w, composer_h);
+    update_panels();
+    draw_cursor();
+    doupdate();
+    break;
+  }
+  case CTRL('q'): {
+    logger->debug("key: quit");
+    cont = false;
+    app_state.set_terminating(true);
+    break;
+  }
+  case '\t': {
+    logger->debug("key: tab");
+    current_pan <<= 1;
+    if (current_pan > ID_COMP) {
+      current_pan = 1;
     }
-    case CTRL('q'): {
-      logger->debug("key: quit");
-      event_queue.push(std::make_shared<event_quit>());
-      break;
-    }
-    case '\t': {
-      logger->debug("key: tab");
-      event_queue.push(std::make_shared<event_cycle_panel>());
-    }
-    case ERR: {
-      break;
-    }
-    default: {
-      logger->debug(std::format("key: unrecognized key event {}", c));
-      break;
-    }
+    draw_cursor();
+    doupdate();
+    break;
+  }
+  case ERR: {
+    break;
+  }
+  default: {
+    logger->debug(std::format("key: unrecognized key event {}", c));
+    break;
+  }
   }
 }
