@@ -1,6 +1,7 @@
 #ifndef INCLUDE_SRC_GLOBAL_H_
 #define INCLUDE_SRC_GLOBAL_H_
 
+#include <cstddef>
 #include <curses.h>
 #include <fmt/base.h>
 #include <panel.h>
@@ -86,8 +87,8 @@ public:
   std::unordered_map<int32_t, std::unordered_map<td::td_api::int53, int64_t>>
       id_to_position;
 
-  // chosen chatlist
   td::td_api::int53 chosen_chat_id;
+  size_t chatlist_scroll_offset{};
 
   std::unordered_map<int, std::mutex> ma;
 

@@ -1,6 +1,7 @@
 #include "process_input.h"
 
 #include <curses.h>
+#include <panel.h>
 
 #include <format>
 #include <memory>
@@ -34,15 +35,17 @@ void process_mouse(tl_app_state_struct &app_state, MEVENT *mevent) {
     if (input_state.state == S_MOUSE_DRAG) {
       int new_side_w{side_w}, new_composer_h{composer_h};
       if (input_state.mbuf.where & ID_E_SIDE_MAIN) {
-        new_side_w = mevent->x + 1;
+        new_side_w = mevent->x;
       }
       if (input_state.mbuf.where & ID_E_COMP_TOP) {
-        new_composer_h = LINES - mevent->y;
+        new_composer_h = LINES - mevent->y - 1;
       }
+      curs_set(0);
       resize(app_state, new_side_w, new_composer_h);
       update_panels();
       draw_cursor();
       doupdate();
+      curs_set(1);
     }
   }
 }
@@ -51,23 +54,23 @@ void process_B1_pressed(MEVENT *mevent) {
   bool &edge = input_state.mbuf.edge;
   int &where = input_state.mbuf.where;
 
-  if (mevent->y < LINES - composer_h) {
-    if (mevent->x < side_w - 1) {
+  if (mevent->y < LINES - composer_h - 1) {
+    if (mevent->x < side_w) {
       edge = false;
       where = ID_SIDE;
-    } else if (mevent->x > side_w - 1) {
+    } else if (mevent->x > side_w) {
       edge = false;
       where = ID_MAIN;
     } else {
       edge = true;
       where = ID_E_SIDE_MAIN;
     }
-  } else if (mevent->y > LINES - composer_h) {
+  } else if (mevent->y > LINES - composer_h - 1) {
     edge = false;
     where = ID_COMP;
   } else {
     edge = true;
-    if (mevent->x == side_w - 1) {
+    if (mevent->x == side_w) {
       where = ID_C_SIDE_MAIN_COMP;
     } else {
       where = ID_E_COMP_TOP;
@@ -95,10 +98,12 @@ void process_input(tl_app_state_struct &app_state, bool &cont) {
   }
   case KEY_RESIZE: {
     logger->debug("key: resize");
+    curs_set(0);
     resize(app_state, side_w, composer_h);
     update_panels();
     draw_cursor();
     doupdate();
+    curs_set(1);
     break;
   }
   case CTRL('q'): {
@@ -124,5 +129,61 @@ void process_input(tl_app_state_struct &app_state, bool &cont) {
     logger->debug(std::format("key: unrecognized key event {}", c));
     break;
   }
+  }
+
+  if (current_pan == ID_SIDE) {
+    switch (c) {
+    case 'h': {
+      logger->debug("key: h");
+      cursor_positions[current_pan].second =
+          std::max(cursor_positions[current_pan].second - 1, 0);
+      draw_cursor();
+      wnoutrefresh(panel_window(panels[current_pan]));
+      doupdate();
+      break;
+    }
+    case 'j': {
+      logger->debug("key: j");
+      std::pair<int, int> &pos = cursor_positions[current_pan];
+      int maxy = getmaxy(panel_window(panels[current_pan]));
+      if (pos.first >= maxy - 1) {
+        pos.first = maxy - 1;
+        ++app_state.chatlist_scroll_offset;
+        draw_side(app_state);
+      } else {
+        ++pos.first;
+      }
+      draw_cursor();
+      wnoutrefresh(panel_window(panels[current_pan]));
+      doupdate();
+      break;
+    }
+    case 'k': {
+      logger->debug("key: k");
+      cursor_positions[current_pan].first =
+          std::max(cursor_positions[current_pan].first - 1, 0);
+      draw_cursor();
+      wnoutrefresh(panel_window(panels[current_pan]));
+      doupdate();
+      break;
+    }
+    case 'l': {
+      logger->debug("key: l");
+      int maxx = getmaxx(panel_window(panels[current_pan]));
+      cursor_positions[current_pan].second =
+          std::min(cursor_positions[current_pan].second + 1, maxx - 1);
+      draw_cursor();
+      wnoutrefresh(panel_window(panels[current_pan]));
+      doupdate();
+      break;
+    }
+    case ERR: {
+      break;
+    }
+    default: {
+      logger->debug(std::format("key: unrecognized key event {}", c));
+      break;
+    }
+    }
   }
 }

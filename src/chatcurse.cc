@@ -136,18 +136,22 @@ int main(int argv, char **argc) {
       logger->debug("ET_RESIZE");
       shared_ptr<event_resize> ev =
           std::dynamic_pointer_cast<event_resize>(to_update);
+      curs_set(0);
       resize(*tgcl.app_state, ev->side_w, ev->comp_h);
       update_panels();
       draw_cursor();
       doupdate();
+      curs_set(1);
       break;
     }
     case ET_CHATLIST: {
       logger->debug("ET_CHATLIST");
+      curs_set(0);
       draw_side(*tgcl.app_state);
       update_panels();
       draw_cursor();
       doupdate();
+      curs_set(1);
       break;
     }
     case ET_CYCLE_PANEL: {

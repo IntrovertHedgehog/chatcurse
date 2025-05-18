@@ -7,11 +7,10 @@
 #define ID_COMP 4
 #define ID_FLOAT 8
 #define ID_ALL (ID_SIDE | ID_MAIN | ID_COMP | ID_FLOAT)
-#define ID_QUIT 16
 
-#define ID_E_SIDE_MAIN 1
-#define ID_E_COMP_TOP 2
-#define ID_C_SIDE_MAIN_COMP 3
+#define ID_E_SIDE_MAIN 16
+#define ID_E_COMP_TOP 32
+#define ID_C_SIDE_MAIN_COMP (ID_E_SIDE_MAIN | ID_E_COMP_TOP)
 
 #include <panel.h>
 
@@ -27,5 +26,4 @@ void init_config();
 void init_layout(tl_app_state_struct &);
 void draw_border();
 void resize(tl_app_state_struct &, int new_side_w, int new_composer_h);
-void draw_cur();
-#endif  // INCLUDE_SRC_LAYOUT_H_
+#endif // INCLUDE_SRC_LAYOUT_H_
