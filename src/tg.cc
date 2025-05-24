@@ -13,6 +13,7 @@
 #include "event_types.h"
 #include "global.h"
 #include "td/telegram/td_api.h"
+#include "qrcodegen.hpp"
 
 using td::td_api::make_object;
 using td::td_api::Object;

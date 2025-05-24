@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <format>
+#include <iterator>
 #include <mutex>
 #include <string>
 #include <utility>
@@ -95,35 +96,38 @@ void fill(tl_app_state_struct &app_state) {
 
 void draw_side(tl_app_state_struct &app_state) {
   std::lock_guard l(*app_state.mutexes[tl_app_state_struct::_id_chatboxes]);
-  auto &position_sets = app_state.position_sets[td::td_api::chatListMain::ID];
-  logger->debug("position set size {}", position_sets.size());
+  auto &position_sets = app_state.position_sets[app_state.current_chatlist];
   int maxy, maxx;
   getmaxyx(panel_window(panels[ID_SIDE]), maxy, maxx);
   size_t list_size = std::min(position_sets.size(), static_cast<size_t>(maxy));
   auto pos = position_sets.begin();
-  for (size_t i = 0; i < app_state.chatlist_scroll_offset; ++i, ++pos)
-    ;
+  advance(pos, app_state.chatlist_scroll_offset);
   auto &id_to_chat = app_state.id_to_chat;
 
-  for (size_t i = 0; i < list_size && pos != position_sets.end(); ++i) {
-    auto &chat = id_to_chat[pos->second];
-    if (i == 0) {
-      app_state.chosen_chat_id = chat->id_;
-    }
-    std::string name(chat->title_);
-    if (name.size() < static_cast<size_t>(maxx)) {
-      name.insert(name.end(), maxx - name.size(), ' ');
-    }
+  for (size_t i = 0; i < list_size; ++i) {
+    if (pos != position_sets.end()) {
+      auto &chat = id_to_chat[pos->second];
+      if (i == 0) {
+        app_state.chosen_chat_id = chat->id_;
+      }
+      std::string name(chat->title_);
+      if (name.size() < static_cast<size_t>(maxx)) {
+        name.insert(name.end(), maxx - name.size(), ' ');
+      }
 
-    if (app_state.chosen_chat_id == chat->id_) {
-      wattron(panel_window(panels[ID_SIDE]), A_REVERSE);
+      if (app_state.chosen_chat_id == chat->id_) {
+        wattron(panel_window(panels[ID_SIDE]), A_REVERSE);
+      }
+      mvwaddstr(panel_window(panels[ID_SIDE]), i, 0,
+                name.substr(0, maxx).c_str());
+      if (app_state.chosen_chat_id == chat->id_) {
+        wattroff(panel_window(panels[ID_SIDE]), A_REVERSE);
+      }
+      ++pos;
+    } else {
+      mvwaddstr(panel_window(panels[ID_SIDE]), i, 0,
+                std::string(maxx, ' ').c_str());
     }
-    mvwaddstr(panel_window(panels[ID_SIDE]), i, 0,
-              name.substr(0, maxx).c_str());
-    if (app_state.chosen_chat_id == chat->id_) {
-      wattroff(panel_window(panels[ID_SIDE]), A_REVERSE);
-    }
-    ++pos;
   }
 }
 

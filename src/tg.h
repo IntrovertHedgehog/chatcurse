@@ -7,19 +7,12 @@
 #include <cstdint>
 #include <cstdlib>
 #include <functional>
-#include <iostream>
 #include <map>
 #include <memory>
-#include <ostream>
-#include <string>
-#include <thread>
-#include <utility>
 
 #include "global.h"
-#include "qrcodegen.hpp"
 #include "td/telegram/Client.h"
 #include "td/telegram/td_api.h"
-#include "td/telegram/td_api.hpp"
 #include "utils.h"
 
 namespace detail {

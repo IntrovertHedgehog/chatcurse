@@ -1,13 +1,13 @@
 #ifndef INCLUDE_SRC_GLOBAL_H_
 #define INCLUDE_SRC_GLOBAL_H_
 
-#include <cstddef>
 #include <curses.h>
 #include <fmt/base.h>
 #include <panel.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <sys/eventfd.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <initializer_list>
@@ -28,7 +28,7 @@ extern std::shared_ptr<spdlog::logger> logger;
 // UI
 // composer_pan include top line, side_pan include side line
 extern PANEL *composer_pan, *side_pan, *main_pan, *float_pan;
-extern std::map<int, PANEL*> panels;
+extern std::map<int, PANEL *> panels;
 // side_w includes right border
 // composer_h includes top border
 extern int side_w, composer_h, current_pan, side_scroll_offset;
@@ -92,19 +92,21 @@ public:
 
   std::unordered_map<int, std::mutex> ma;
 
-  tl_app_state_struct()
-      : mutexes{{_id_current_pane, std::make_shared<std::mutex>()},
-                {_id_chatboxes, std::make_shared<std::mutex>()},
-                {_id_terminating, std::make_shared<std::mutex>()}} {}
-  int current_pane();
-  void set_current_pane(int);
-  bool terminating();
-  void set_terminating(bool);
-};
+  int32_t current_chatlist {td::td_api::chatListMain::ID};
 
-// extern tl_app_state_struct tl_app_state;
+    tl_app_state_struct()
+        : mutexes{{_id_current_pane, std::make_shared<std::mutex>()},
+                  {_id_chatboxes, std::make_shared<std::mutex>()},
+                  {_id_terminating, std::make_shared<std::mutex>()}} {}
+    int current_pane();
+    void set_current_pane(int);
+    bool terminating();
+    void set_terminating(bool);
+  };
 
-// extern std::unordered_map<std::string, shared_ptr<app_state>>
-//     application_states;
+  // extern tl_app_state_struct tl_app_state;
+
+  // extern std::unordered_map<std::string, shared_ptr<app_state>>
+  //     application_states;
 
 #endif // INCLUDE_SRC_GLOBAL_H_
