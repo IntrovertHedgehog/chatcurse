@@ -1,0 +1,2 @@
+- comprehensive shortcut system
+- special character display
