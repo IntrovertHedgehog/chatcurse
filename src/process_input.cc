@@ -8,6 +8,7 @@
 #include <csignal>
 #include <cstddef>
 #include <format>
+#include <iterator>
 #include <utility>
 
 #include "global.h"
@@ -215,15 +216,27 @@ void process_input(tl_app_state_struct &app_state, bool &cont) {
           draw_cursor();
           wnoutrefresh(panel_window(panels[current_pan]));
           doupdate();
-          input_state.reset();
-        } else {
-          input_state.reset();
         }
+        input_state.reset();
       } else {
         input_state.state = S_KEY_PREF;
         input_state.pref_key = 'g';
       }
       break;
+    }
+    case 'o': {
+      logger->debug("key: o");
+      auto &pos = cursor_positions[current_pan];
+      if (app_state.chatlist_scroll_offset + pos.first <
+          app_state.position_sets[app_state.current_chatlist].size()) {
+        auto it = app_state.position_sets[app_state.current_chatlist].begin();
+        advance(it, app_state.chatlist_scroll_offset + pos.first);
+        app_state.chosen_chat_id = it->second;
+        draw_side(app_state);
+        draw_cursor();
+        wnoutrefresh(panel_window(panels[current_pan]));
+        doupdate();
+      }
     }
     case ERR: {
       break;

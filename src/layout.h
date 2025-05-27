@@ -11,13 +11,13 @@
 #define ID_E_SIDE_MAIN 16
 #define ID_E_COMP_TOP 32
 #define ID_C_SIDE_MAIN_COMP (ID_E_SIDE_MAIN | ID_E_COMP_TOP)
-
 #include <panel.h>
 
 void fill(tl_app_state_struct &);
 void fill(tl_app_state_struct &, int);
 void fill(PANEL *pan, char c, int offsetx = 0, int cutoffx = 0, int offsety = 0,
           int cutoffy = 0);
+void draw_pane(tl_app_state_struct &, int pane);
 void draw_side(tl_app_state_struct &);
 void draw_main(tl_app_state_struct &);
 void draw_composer(tl_app_state_struct &);

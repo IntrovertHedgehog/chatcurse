@@ -1,5 +1,4 @@
 # UI
-
 - chatlist, messages, composer
 - preview chat when cycling chatlist
 - fuzzy search chat list

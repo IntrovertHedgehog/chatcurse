@@ -94,6 +94,20 @@ void fill(tl_app_state_struct &app_state) {
   draw_composer(app_state);
 }
 
+void draw_pane(tl_app_state_struct &app_state, int pane) {
+  switch (pane) {
+  case ID_SIDE:
+    draw_side(app_state);
+    break;
+  case ID_COMP:
+    draw_composer(app_state);
+    break;
+  case ID_MAIN:
+    draw_main(app_state);
+    break;
+  }
+}
+
 void draw_side(tl_app_state_struct &app_state) {
   std::lock_guard l(*app_state.mutexes[tl_app_state_struct::_id_chatboxes]);
   auto &position_sets = app_state.position_sets[app_state.current_chatlist];
@@ -107,12 +121,11 @@ void draw_side(tl_app_state_struct &app_state) {
   for (size_t i = 0; i < list_size; ++i) {
     if (pos != position_sets.end()) {
       auto &chat = id_to_chat[pos->second];
-      if (i == 0) {
-        app_state.chosen_chat_id = chat->id_;
-      }
       std::string name(chat->title_);
       if (name.size() < static_cast<size_t>(maxx)) {
         name.insert(name.end(), maxx - name.size(), ' ');
+      } else if (name.size() == 0) {
+        name = "deleted account";
       }
 
       if (app_state.chosen_chat_id == chat->id_) {
@@ -142,7 +155,7 @@ void draw_cursor() {
                 curpos.first, curpos.second);
   wmove(win, curpos.first, curpos.second);
   wnoutrefresh(win);
-};
+}
 
 void init_config() {
   side_w = std::min(32, COLS / 4);
