@@ -117,7 +117,7 @@ int main(int argv, char **argc) {
   bool cont = true;
   while (cont) {
     // update UI every loop
-    process_input(*tgcl.app_state, cont);
+    process_input(tgcl, cont);
     // TODO(hedgehog): do all update before moving on getting inputs
     shared_ptr<event_base> to_update = event_queue.pop_and_get();
     if (!to_update) {
@@ -163,6 +163,12 @@ int main(int argv, char **argc) {
       draw_cursor();
       doupdate();
       break;
+    }
+    case ET_MESSAGES: {
+      logger->debug("ET_MESSAGES");
+      draw_main(*tgcl.app_state);
+      draw_cursor();
+      doupdate();
     }
     }
   }

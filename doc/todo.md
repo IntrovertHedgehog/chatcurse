@@ -1,2 +1,4 @@
 - comprehensive shortcut system
 - special character display
+- replace common ui idiom
+- determine if messages are missing before asking from network. having a segment tree to make sure a segment is continguous and no msg are missing in that segment

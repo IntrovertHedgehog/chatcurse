@@ -74,21 +74,21 @@ updateUserStatus
 
 ## priority
 
-updateAuthorizationState
-updateUser
-updateUserFullInfo
-updateNewChat
-updateChatAddedToList
+~~updateAuthorizationState~~
+~~updateUser~~
+~~updateUserFullInfo~~
+~~updateNewChat~~
+~~updateChatAddedToList~~
 
-updateBasicGroup
-updateBasicGroupFullInfo
-updateSupergroup
-updateSupergroupFullInfo
+~~updateBasicGroup~~
+~~updateBasicGroupFullInfo~~
+~~updateSupergroup~~
+~~updateSupergroupFullInfo~~
 updateChatLastMessage
 
 updateChatIsMarkedAsUnread
 updateChatTitle
-updateChatPosition
+~~updateChatPosition~~
 updateNewChatJoinRequest
 updateChatReadInbox
 updateChatReadOutbox

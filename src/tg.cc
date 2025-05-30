@@ -2,6 +2,7 @@
 
 #include <memory.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <cstdlib>
 #include <functional>
@@ -12,8 +13,9 @@
 
 #include "event_types.h"
 #include "global.h"
-#include "td/telegram/td_api.h"
 #include "qrcodegen.hpp"
+#include "td/telegram/td_api.h"
+#include "td/telegram/td_api.hpp"
 
 using td::td_api::make_object;
 using td::td_api::Object;
@@ -68,6 +70,18 @@ void TgClient::send_query(
     handlers_.emplace(query_id, std::move(handler));
   }
   client_manager_->send(client_id_, query_id, std::move(f));
+}
+
+void TgClient::get_chat_history(td::td_api::int53 chat_id) {
+  send_query(make_object<td::td_api::getChatHistory>(chat_id, 0, 0, 100, false),
+             [this](object_ptr<td::td_api::Object> o) {
+               td::td_api::downcast_call(*o,
+                                         overloaded(
+                                             [this](td::td_api::messages &msg) {
+                                               process_get_chat_history(msg);
+                                             },
+                                             [](auto &o) {}));
+             });
 }
 
 void TgClient::process_response(td::ClientManager::Response response) {
@@ -282,7 +296,7 @@ void TgClient::process_update_new_chat(td::td_api::updateNewChat &u) {
     _update_position(chat_id, *pos);
   }
 
-  event_queue.push(std::make_shared<event_base>(ET_CHATLIST));
+  event_queue.push(std::make_shared<event_chatlist>());
   app_state->id_to_chat[chat_id] = std::move(u.chat_);
 }
 
@@ -317,14 +331,14 @@ void TgClient::process_update_chat_added_to_list(
   app_state->id_to_position[u.chat_list_->get_id()][u.chat_id_] = 0;
   app_state->position_sets[u.chat_list_->get_id()].insert(
       std::make_pair(0, u.chat_id_));
-  event_queue.push(std::make_shared<event_base>(ET_CHATLIST));
+  event_queue.push(std::make_shared<event_chatlist>());
 }
 
 void TgClient::process_update_chat_position(td::td_api::updateChatPosition &u) {
   std::lock_guard l(*app_state->mutexes[tl_app_state_struct::_id_chatboxes]);
   logger->debug("process_update_chat_position");
   _update_position(u.chat_id_, *u.position_);
-  event_queue.push(std::make_shared<event_base>(ET_CHATLIST));
+  event_queue.push(std::make_shared<event_chatlist>());
 }
 
 void TgClient::process_update_chat_last_message(
@@ -338,5 +352,22 @@ void TgClient::process_update_chat_last_message(
       _update_position(u.chat_id_, *pos);
     }
   }
-  event_queue.push(std::make_shared<event_base>(ET_CHATLIST));
+  event_queue.push(std::make_shared<event_chatlist>());
 }
+
+void TgClient::process_get_chat_history(
+    td::td_api::messages &received_messages) {
+  if (received_messages.total_count_ == 0) {
+    return;
+  }
+  std::lock_guard<std::mutex> l(
+      *app_state->mutexes[tl_app_state_struct::_id_messages]);
+
+  td::td_api::int53 chat_id(received_messages.messages_[0]->chat_id_);
+
+  for (auto it = received_messages.messages_.begin();
+       it != received_messages.messages_.end(); ++it) {
+    app_state->messages[chat_id].emplace(std::move(*it));
+  }
+  event_queue.push(std::make_shared<event_messages>(chat_id));
+};

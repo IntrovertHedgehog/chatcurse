@@ -56,7 +56,6 @@ class TgClient {
 
  public:
   shared_ptr<tl_app_state_struct> app_state;
-  friend void call_init_event_handler(TgClient &cl);
   TgClient();
   // initialize authentication and setup db
   // at then end of this function it's safe to show the ui
@@ -81,6 +80,9 @@ class TgClient {
       }
     };
   }
+
+  void get_chat_history(td::td_api::int53 chat_id);
+
   void process_auth();
   void process_update_user(td::td_api::updateUser &);
   void process_update_user_full_info(td::td_api::updateUserFullInfo &);
@@ -94,6 +96,8 @@ class TgClient {
   void process_update_chat_added_to_list(td::td_api::updateChatAddedToList &);
   void process_update_chat_position(td::td_api::updateChatPosition &);
   void process_update_chat_last_message(td::td_api::updateChatLastMessage &);
+  
+  void process_get_chat_history(td::td_api::messages &);
 };
 
 #endif  // INCLUDE_SRC_TG_H_

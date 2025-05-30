@@ -1,11 +1,13 @@
 #include "global.h"
 
+#include <functional>
 #include <spdlog/logger.h>
 #include <spdlog/sinks/basic_file_sink.h>
 
 #include <memory>
 #include <mutex>
 #include "layout.h"
+#include "td/telegram/td_api.h"
 
 std::shared_ptr<spdlog::logger> logger;
 std::map<int, PANEL*> panels;

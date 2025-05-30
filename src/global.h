@@ -27,7 +27,6 @@ extern std::shared_ptr<spdlog::logger> logger;
 
 // UI
 // composer_pan include top line, side_pan include side line
-extern PANEL *composer_pan, *side_pan, *main_pan, *float_pan;
 extern std::map<int, PANEL *> panels;
 // side_w includes right border
 // composer_h includes top border
@@ -54,6 +53,13 @@ public:
 extern event_queue_struct event_queue;
 using td::td_api::object_ptr;
 
+struct cmp_msg_reverse_chrono {
+  bool operator()(const object_ptr<td::td_api::message> &m1,
+                  const object_ptr<td::td_api::message> &m2) const {
+    return m1->date_ > m2->date_;
+  }
+};
+
 class tl_app_state_struct {
   int _current_pane;
   bool _terminating;
@@ -61,7 +67,7 @@ class tl_app_state_struct {
   // TODO(hedgehog): switch to shared_ptr and thread protect these
 public:
   static int constexpr _id_current_pane = 1, _id_chatboxes = 2,
-                       _id_terminating = 3;
+                       _id_terminating = 3, _id_messages = 4;
   std::unordered_map<int, shared_ptr<std::mutex>> mutexes;
   std::unordered_map<td::td_api::int53, object_ptr<td::td_api::user>>
       id_to_user;
@@ -87,26 +93,30 @@ public:
   std::unordered_map<int32_t, std::unordered_map<td::td_api::int53, int64_t>>
       id_to_position;
 
-  td::td_api::int53 chosen_chat_id;
+  td::td_api::int53 chosen_chat_id{-1};
   size_t chatlist_scroll_offset{};
+  int32_t current_chatlist{td::td_api::chatListMain::ID};
 
-  std::unordered_map<int, std::mutex> ma;
+  std::unordered_map<
+      td::td_api::int53,
+      std::set<object_ptr<td::td_api::message>, cmp_msg_reverse_chrono>>
+      messages;
 
-  int32_t current_chatlist {td::td_api::chatListMain::ID};
+  tl_app_state_struct()
+      : mutexes{{_id_current_pane, std::make_shared<std::mutex>()},
+                {_id_chatboxes, std::make_shared<std::mutex>()},
 
-    tl_app_state_struct()
-        : mutexes{{_id_current_pane, std::make_shared<std::mutex>()},
-                  {_id_chatboxes, std::make_shared<std::mutex>()},
-                  {_id_terminating, std::make_shared<std::mutex>()}} {}
-    int current_pane();
-    void set_current_pane(int);
-    bool terminating();
-    void set_terminating(bool);
-  };
+                {_id_terminating, std::make_shared<std::mutex>()},
+                {_id_messages, std::make_shared<std::mutex>()}} {}
+  int current_pane();
+  void set_current_pane(int);
+  bool terminating();
+  void set_terminating(bool);
+};
 
-  // extern tl_app_state_struct tl_app_state;
+// extern tl_app_state_struct tl_app_state;
 
-  // extern std::unordered_map<std::string, shared_ptr<app_state>>
-  //     application_states;
+// extern std::unordered_map<std::string, shared_ptr<app_state>>
+//     application_states;
 
 #endif // INCLUDE_SRC_GLOBAL_H_

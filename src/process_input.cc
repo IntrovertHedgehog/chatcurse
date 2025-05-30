@@ -13,6 +13,7 @@
 
 #include "global.h"
 #include "layout.h"
+#include "tg.h"
 #include "utils.h"
 
 struct input_state_str {
@@ -27,7 +28,7 @@ struct input_state_str {
 
 input_state_str input_state;
 
-void process_mouse(tl_app_state_struct &app_state, MEVENT *mevent) {
+void process_mouse(TgClient & tgcl, MEVENT *mevent) {
   if ((mevent->bstate & BUTTON1_PRESSED)) {
     process_B1_pressed(mevent);
   } else if (mevent->bstate & BUTTON1_RELEASED) {
@@ -42,7 +43,7 @@ void process_mouse(tl_app_state_struct &app_state, MEVENT *mevent) {
         new_composer_h = LINES - mevent->y - 1;
       }
       curs_set(0);
-      resize(app_state, new_side_w, new_composer_h);
+      resize(*tgcl.app_state, new_side_w, new_composer_h);
       update_panels();
       draw_cursor();
       doupdate();
@@ -87,20 +88,20 @@ void process_B1_pressed(MEVENT *mevent) {
   }
 }
 
-void process_input(tl_app_state_struct &app_state, bool &cont) {
+void process_input(TgClient & tgcl, bool &cont) {
   MEVENT mevent;
   int c = getch();
   switch (c) {
   case KEY_MOUSE: {
     if (getmouse(&mevent) == OK) {
-      process_mouse(app_state, &mevent);
+      process_mouse(tgcl, &mevent);
     }
     break;
   }
   case KEY_RESIZE: {
     logger->debug("key: resize");
     curs_set(0);
-    resize(app_state, side_w, composer_h);
+    resize(*tgcl.app_state, side_w, composer_h);
     update_panels();
     draw_cursor();
     doupdate();
@@ -110,7 +111,7 @@ void process_input(tl_app_state_struct &app_state, bool &cont) {
   case CTRL('q'): {
     logger->debug("key: quit");
     cont = false;
-    app_state.set_terminating(true);
+    tgcl.app_state->set_terminating(true);
     break;
   }
   case '\t': {
@@ -152,11 +153,11 @@ void process_input(tl_app_state_struct &app_state, bool &cont) {
         size_t max_offset =
             std::max(
                 static_cast<size_t>(maxy),
-                app_state.position_sets[app_state.current_chatlist].size()) -
+                tgcl.app_state->position_sets[tgcl.app_state->current_chatlist].size()) -
             maxy;
-        app_state.chatlist_scroll_offset =
-            std::min(max_offset, app_state.chatlist_scroll_offset + 1);
-        draw_side(app_state);
+        tgcl.app_state->chatlist_scroll_offset =
+            std::min(max_offset, tgcl.app_state->chatlist_scroll_offset + 1);
+        draw_side(*tgcl.app_state);
       } else {
         ++pos.first;
       }
@@ -170,10 +171,10 @@ void process_input(tl_app_state_struct &app_state, bool &cont) {
       std::pair<int, int> &pos = cursor_positions[current_pan];
       if (pos.first <= 0) {
         pos.first = 0;
-        app_state.chatlist_scroll_offset =
-            std::max(static_cast<size_t>(1), app_state.chatlist_scroll_offset) -
+        tgcl.app_state->chatlist_scroll_offset =
+            std::max(static_cast<size_t>(1), tgcl.app_state->chatlist_scroll_offset) -
             1;
-        draw_side(app_state);
+        draw_side(*tgcl.app_state);
       } else {
         --pos.first;
       }
@@ -196,11 +197,11 @@ void process_input(tl_app_state_struct &app_state, bool &cont) {
       logger->debug("key: G");
       int maxy = getmaxy(panel_window(panels[current_pan]));
       cursor_positions[current_pan].first = maxy - 1;
-      app_state.chatlist_scroll_offset =
+      tgcl.app_state->chatlist_scroll_offset =
           std::max(static_cast<size_t>(maxy),
-                   app_state.position_sets[app_state.current_chatlist].size()) -
+                   tgcl.app_state->position_sets[tgcl.app_state->current_chatlist].size()) -
           maxy;
-      draw_side(app_state);
+      draw_side(*tgcl.app_state);
       draw_cursor();
       wnoutrefresh(panel_window(panels[current_pan]));
       doupdate();
@@ -210,9 +211,9 @@ void process_input(tl_app_state_struct &app_state, bool &cont) {
       logger->debug("key: g");
       if (input_state.state == S_KEY_PREF) {
         if (input_state.pref_key == 'g') {
-          app_state.chatlist_scroll_offset = 0;
+          tgcl.app_state->chatlist_scroll_offset = 0;
           cursor_positions[current_pan].first = 0;
-          draw_side(app_state);
+          draw_side(*tgcl.app_state);
           draw_cursor();
           wnoutrefresh(panel_window(panels[current_pan]));
           doupdate();
@@ -227,12 +228,13 @@ void process_input(tl_app_state_struct &app_state, bool &cont) {
     case 'o': {
       logger->debug("key: o");
       auto &pos = cursor_positions[current_pan];
-      if (app_state.chatlist_scroll_offset + pos.first <
-          app_state.position_sets[app_state.current_chatlist].size()) {
-        auto it = app_state.position_sets[app_state.current_chatlist].begin();
-        advance(it, app_state.chatlist_scroll_offset + pos.first);
-        app_state.chosen_chat_id = it->second;
-        draw_side(app_state);
+      if (tgcl.app_state->chatlist_scroll_offset + pos.first <
+          tgcl.app_state->position_sets[tgcl.app_state->current_chatlist].size()) {
+        auto it = tgcl.app_state->position_sets[tgcl.app_state->current_chatlist].begin();
+        advance(it, tgcl.app_state->chatlist_scroll_offset + pos.first);
+        tgcl.app_state->chosen_chat_id = it->second;
+        draw_side(*tgcl.app_state);
+        tgcl.get_chat_history(tgcl.app_state->chosen_chat_id);
         draw_cursor();
         wnoutrefresh(panel_window(panels[current_pan]));
         doupdate();

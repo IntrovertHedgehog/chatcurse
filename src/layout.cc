@@ -9,11 +9,13 @@
 #include <format>
 #include <iterator>
 #include <mutex>
+#include <set>
 #include <string>
 #include <utility>
 
 #include "global.h"
 #include "td/telegram/td_api.h"
+#include "tg.h"
 #include "utils.h"
 
 void init_layout(tl_app_state_struct &app_state) {
@@ -122,10 +124,10 @@ void draw_side(tl_app_state_struct &app_state) {
     if (pos != position_sets.end()) {
       auto &chat = id_to_chat[pos->second];
       std::string name(chat->title_);
-      if (name.size() < static_cast<size_t>(maxx)) {
-        name.insert(name.end(), maxx - name.size(), ' ');
-      } else if (name.size() == 0) {
+      if (name.size() == 0) {
         name = "deleted account";
+      } else if (name.size() < static_cast<size_t>(maxx)) {
+        name.insert(name.end(), maxx - name.size(), ' ');
       }
 
       if (app_state.chosen_chat_id == chat->id_) {
@@ -144,7 +146,52 @@ void draw_side(tl_app_state_struct &app_state) {
   }
 }
 
-void draw_main(tl_app_state_struct &app_state) {};
+void draw_main(tl_app_state_struct &app_state) {
+  std::lock_guard<std::mutex> l(
+      *app_state.mutexes[tl_app_state_struct::_id_messages]);
+
+  if (app_state.chosen_chat_id == -1) {
+    return;
+  }
+  auto &displayed_messages = app_state.messages[app_state.chosen_chat_id];
+
+  auto it = displayed_messages.begin();
+  int lines = getmaxy(panel_window(panels[ID_MAIN]));
+  int width = getmaxx(panel_window(panels[ID_MAIN]));
+  while (lines--) {
+    if (it != displayed_messages.end()) {
+      td::td_api::Object &raw_content =
+          const_cast<td::td_api::MessageContent &>(*((*it)->content_));
+      td::td_api::downcast_call(
+          raw_content,
+          overloaded(
+              [&lines, &width](td::td_api::messageText &content) {
+                td::td_api::string text = content.text_->text_;
+                logger->debug("trying to print {}",
+                              td::td_api::to_string(content));
+                text.append(std::max(0, width - static_cast<int>(text.size())),
+                            ' ');
+                text.resize(width);
+                mvwaddstr(panel_window(panels[ID_MAIN]), lines, 0,
+                          text.c_str());
+                logger->debug("printed {}", text.c_str());
+              },
+              [&lines, &width](auto &) {
+                std::string text("<empty>");
+                text.append(std::max(0, width - static_cast<int>(text.size())),
+                            ' ');
+                mvwaddstr(panel_window(panels[ID_MAIN]), lines, 0,
+                          text.c_str());
+              }));
+      ++it;
+    } else {
+      mvwaddstr(panel_window(panels[ID_MAIN]), lines, 0,
+                std::string(width, ' ').c_str());
+    }
+  }
+  wnoutrefresh(panel_window(panels[ID_MAIN]));
+}
+
 void draw_composer(tl_app_state_struct &app_state) {};
 
 void draw_cursor() {
