@@ -1,13 +1,16 @@
 #include "layout.h"
 
 #include <curses.h>
+#include <fmt/base.h>
 #include <openssl/conf.h>
 #include <panel.h>
 
 #include <algorithm>
+#include <codecvt>
 #include <cstddef>
 #include <format>
 #include <iterator>
+#include <locale>
 #include <mutex>
 #include <set>
 #include <string>
@@ -117,7 +120,7 @@ void draw_side(tl_app_state_struct &app_state) {
   getmaxyx(panel_window(panels[ID_SIDE]), maxy, maxx);
   size_t list_size = std::min(position_sets.size(), static_cast<size_t>(maxy));
   auto pos = position_sets.begin();
-  advance(pos, app_state.chatlist_scroll_offset);
+  advance(pos, app_state.scroll_offset[ID_SIDE]);
   auto &id_to_chat = app_state.id_to_chat;
 
   for (size_t i = 0; i < list_size; ++i) {
@@ -156,6 +159,7 @@ void draw_main(tl_app_state_struct &app_state) {
   auto &displayed_messages = app_state.messages[app_state.chosen_chat_id];
 
   auto it = displayed_messages.begin();
+  std::advance(it, app_state.scroll_offset[ID_MAIN]);
   int lines = getmaxy(panel_window(panels[ID_MAIN]));
   int width = getmaxx(panel_window(panels[ID_MAIN]));
   while (lines--) {
@@ -173,7 +177,7 @@ void draw_main(tl_app_state_struct &app_state) {
                             ' ');
                 text.resize(width);
                 mvwaddstr(panel_window(panels[ID_MAIN]), lines, 0,
-                          text.c_str());
+                           text.c_str());
                 logger->debug("printed {}", text.c_str());
               },
               [&lines, &width](auto &) {

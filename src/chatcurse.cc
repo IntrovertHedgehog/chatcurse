@@ -1,3 +1,4 @@
+#include <clocale>
 #include <curses.h>
 #include <linux/prctl.h>
 #include <panel.h>
@@ -32,6 +33,8 @@ using std::string;
 
 int main(int argv, char **argc) {
   std::cout << "Starting chatcurse..." << std::endl;
+
+  setlocale(LC_ALL, "");
 
   try {
     logger = spdlog::basic_logger_mt("chatcurse", "tmp/debug.log", true);

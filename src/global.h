@@ -30,7 +30,7 @@ extern std::shared_ptr<spdlog::logger> logger;
 extern std::map<int, PANEL *> panels;
 // side_w includes right border
 // composer_h includes top border
-extern int side_w, composer_h, current_pan, side_scroll_offset;
+extern int side_w, composer_h, current_pan;
 // in pair{y, x}
 extern std::map<int, std::pair<int, int>> cursor_positions;
 
@@ -94,7 +94,7 @@ public:
       id_to_position;
 
   td::td_api::int53 chosen_chat_id{-1};
-  size_t chatlist_scroll_offset{};
+  std::map<int, size_t> scroll_offset;
   int32_t current_chatlist{td::td_api::chatListMain::ID};
 
   std::unordered_map<

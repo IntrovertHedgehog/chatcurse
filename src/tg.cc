@@ -2,23 +2,13 @@
 
 #include <memory.h>
 
-#include <algorithm>
-#include <cstdint>
-#include <cstdlib>
-#include <functional>
 #include <iostream>
 #include <memory>
 #include <mutex>
 #include <utility>
 
-#include "event_types.h"
-#include "global.h"
 #include "qrcodegen.hpp"
 #include "td/telegram/td_api.h"
-#include "td/telegram/td_api.hpp"
-
-using td::td_api::make_object;
-using td::td_api::Object;
 
 TgClient::TgClient() {
   td::ClientManager::execute(
@@ -46,9 +36,10 @@ void TgClient::init_auth() {
 // is called from main (ui) thread
 void TgClient::init_data(int chat_list_size) {
   // request chat list
-  send_query(make_object<td::td_api::loadChats>(
-                 make_object<td::td_api::chatListMain>(), chat_list_size),
-             {});
+  send_query(
+      make_object<td::td_api::loadChats>(
+          td::td_api::make_object<td::td_api::chatListMain>(), chat_list_size),
+      {});
 }
 
 void TgClient::set_response_handlers() {
@@ -73,7 +64,18 @@ void TgClient::send_query(
 }
 
 void TgClient::get_chat_history(td::td_api::int53 chat_id) {
-  send_query(make_object<td::td_api::getChatHistory>(chat_id, 0, 0, 100, false),
+  std::lock_guard<std::mutex> l{
+      *app_state->mutexes[tl_app_state_struct::_id_messages]};
+  td::td_api::int53 earliest_msg{};
+  td::td_api::int32 offset{};
+
+  if (app_state->messages[chat_id].size()) {
+    auto last_msg = app_state->messages[chat_id].rbegin();
+    earliest_msg = last_msg->get()->id_;
+    offset = 1;
+  }
+  send_query(td::td_api::make_object<td::td_api::getChatHistory>(chat_id, 0, 0,
+                                                                 100, false),
              [this](object_ptr<td::td_api::Object> o) {
                td::td_api::downcast_call(*o,
                                          overloaded(
@@ -370,4 +372,4 @@ void TgClient::process_get_chat_history(
     app_state->messages[chat_id].emplace(std::move(*it));
   }
   event_queue.push(std::make_shared<event_messages>(chat_id));
-};
+}
