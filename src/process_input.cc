@@ -43,7 +43,7 @@ void process_mouse(TgClient &tgcl, MEVENT *mevent) {
         new_composer_h = LINES - mevent->y - 1;
       }
       curs_set(0);
-      resize(*tgcl.app_state, new_side_w, new_composer_h);
+      resize(tgcl, new_side_w, new_composer_h);
       update_panels();
       draw_cursor();
       doupdate();
@@ -101,7 +101,7 @@ void process_input(TgClient &tgcl, bool &cont) {
   case KEY_RESIZE: {
     logger->debug("key: resize");
     curs_set(0);
-    resize(*tgcl.app_state, side_w, composer_h);
+    resize(tgcl, side_w, composer_h);
     update_panels();
     draw_cursor();
     doupdate();
@@ -274,7 +274,7 @@ void process_input(TgClient &tgcl, bool &cont) {
         pos.first = maxy - 1;
         tgcl.app_state->scroll_offset[current_pan] =
             std::max(size_t(1), tgcl.app_state->scroll_offset[current_pan]) - 1;
-        draw_main(*tgcl.app_state);
+        draw_main(tgcl);
       } else {
         ++pos.first;
       }
@@ -296,7 +296,7 @@ void process_input(TgClient &tgcl, bool &cont) {
             maxy;
         tgcl.app_state->scroll_offset[current_pan] = std::min(
             max_offset, tgcl.app_state->scroll_offset[current_pan] + 1);
-        draw_main(*tgcl.app_state);
+        draw_main(tgcl);
       } else {
         --pos.first;
       }

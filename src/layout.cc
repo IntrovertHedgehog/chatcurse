@@ -21,7 +21,7 @@
 #include "tg.h"
 #include "utils.h"
 
-void init_layout(tl_app_state_struct &app_state) {
+void init_layout(TgClient & tgcl) {
   WINDOW *side_win = newwin(LINES - composer_h - 1, side_w, 0, 0),
          *main_win =
              newwin(LINES - composer_h - 1, COLS - side_w - 1, 0, side_w + 1),
@@ -38,7 +38,8 @@ void init_layout(tl_app_state_struct &app_state) {
   current_pan = ID_SIDE;
 
   draw_border();
-  fill(app_state);
+  fill(tgcl);
+  draw_cursor();
   update_panels();
   doupdate();
 }
@@ -51,7 +52,7 @@ void draw_border() {
   mvwaddch(panel_window(panels[ID_C_SIDE_MAIN_COMP]), 0, side_w, ACS_SSBS);
 }
 
-void resize(tl_app_state_struct &app_state, int new_side_w,
+void resize(TgClient & tgcl, int new_side_w,
             int new_composer_h) {
   logger->info(std::format("new size ({}, {})", new_side_w, new_composer_h));
 
@@ -88,27 +89,37 @@ void resize(tl_app_state_struct &app_state, int new_side_w,
   delwin(old_side_main_border_win);
   delwin(old_composer_top_border_win);
 
+  for (int i : std::vector<int>{ID_SIDE, ID_MAIN, ID_COMP}) {
+    auto &pos = cursor_positions[i];
+    int maxy, maxx;
+    getmaxyx(panel_window(panels[i]), maxy, maxx);
+    logger->debug("for panel {} pos {},{} max {},{}", i, pos.first, pos.second, maxy, maxx);
+    pos.first = std::min(pos.first, maxy - 1);
+    pos.second = std::min(pos.second, maxx - 1);
+  }
+
   draw_border();
-  fill(app_state);
+  fill(tgcl);
+  draw_cursor();
   update_panels();
 }
 
-void fill(tl_app_state_struct &app_state) {
-  draw_main(app_state);
-  draw_side(app_state);
-  draw_composer(app_state);
+void fill(TgClient &tgcl) {
+  draw_main(tgcl);
+  draw_side(*tgcl.app_state);
+  draw_composer(*tgcl.app_state);
 }
 
-void draw_pane(tl_app_state_struct &app_state, int pane) {
+void draw_pane(TgClient &tgcl, int pane) {
   switch (pane) {
   case ID_SIDE:
-    draw_side(app_state);
+    draw_side(*tgcl.app_state);
     break;
   case ID_COMP:
-    draw_composer(app_state);
+    draw_composer(*tgcl.app_state);
     break;
   case ID_MAIN:
-    draw_main(app_state);
+    draw_main(tgcl);
     break;
   }
 }
@@ -149,19 +160,26 @@ void draw_side(tl_app_state_struct &app_state) {
   }
 }
 
-void draw_main(tl_app_state_struct &app_state) {
+void draw_main(TgClient &tgcl) {
   std::lock_guard<std::mutex> l(
-      *app_state.mutexes[tl_app_state_struct::_id_messages]);
+      *tgcl.app_state->mutexes[tl_app_state_struct::_id_messages]);
 
-  if (app_state.chosen_chat_id == -1) {
+  if (tgcl.app_state->chosen_chat_id == -1) {
     return;
   }
-  auto &displayed_messages = app_state.messages[app_state.chosen_chat_id];
+  auto &displayed_messages =
+      tgcl.app_state->messages[tgcl.app_state->chosen_chat_id];
 
   auto it = displayed_messages.begin();
-  std::advance(it, app_state.scroll_offset[ID_MAIN]);
+  std::advance(it, tgcl.app_state->scroll_offset[ID_MAIN]);
   int lines = getmaxy(panel_window(panels[ID_MAIN]));
   int width = getmaxx(panel_window(panels[ID_MAIN]));
+
+  if (tgcl.app_state->scroll_offset[ID_MAIN] + lines >
+      displayed_messages.size()) {
+
+  }
+
   while (lines--) {
     if (it != displayed_messages.end()) {
       td::td_api::Object &raw_content =
@@ -177,7 +195,7 @@ void draw_main(tl_app_state_struct &app_state) {
                             ' ');
                 text.resize(width);
                 mvwaddstr(panel_window(panels[ID_MAIN]), lines, 0,
-                           text.c_str());
+                          text.c_str());
                 logger->debug("printed {}", text.c_str());
               },
               [&lines, &width](auto &) {

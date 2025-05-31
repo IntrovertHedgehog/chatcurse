@@ -102,7 +102,7 @@ int main(int argv, char **argc) {
   refresh();
 
   init_config();
-  init_layout(*tgcl.app_state);
+  init_layout(tgcl);
 
   // initial data display (chatlist, messages, etc.)
   {
@@ -140,7 +140,7 @@ int main(int argv, char **argc) {
       shared_ptr<event_resize> ev =
           std::dynamic_pointer_cast<event_resize>(to_update);
       curs_set(0);
-      resize(*tgcl.app_state, ev->side_w, ev->comp_h);
+      resize(tgcl, ev->side_w, ev->comp_h);
       update_panels();
       draw_cursor();
       doupdate();
@@ -169,7 +169,7 @@ int main(int argv, char **argc) {
     }
     case ET_MESSAGES: {
       logger->debug("ET_MESSAGES");
-      draw_main(*tgcl.app_state);
+      draw_main(tgcl);
       draw_cursor();
       doupdate();
     }
@@ -179,7 +179,7 @@ int main(int argv, char **argc) {
   logger->info("quit main loop");
   tgcl_thread.join();
 
-  printf("\033[?1003l\n"); // reset magic
+  printf("\033[?1003l\n");  // reset magic
   mousemask(old_mm, NULL);
   endwin();
 
